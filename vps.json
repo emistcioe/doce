@@ -2,7 +2,7 @@
   "name": "doce",
   "type": "node",
   "path": "/srv/apps/doce",
-  "port": 3017,
+  "port": 3015,
   "domain": "doce.edu.np",
   "build": "pnpm install && pnpm build",
   "start": "pnpm start"
