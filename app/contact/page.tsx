@@ -18,7 +18,34 @@ import {
 } from "@/components/ui/select";
 import { MapPin, Phone, Mail, Clock, Send, MessageSquare } from "lucide-react";
 
-export default function ContactPage() {
+const API_URL =
+  "https://cdn.tcioe.edu.np/api/v1/public/department-mod/departments/department-of-electronics-and-computer-engineering";
+
+type SocialLink = {
+  label?: string;
+  url?: string;
+};
+
+type Department = {
+  name?: string;
+  shortName?: string;
+  phoneNo?: string;
+  email?: string;
+  thumbnail?: string;
+  socialLinks?: SocialLink[];
+};
+
+export default async function ContactPage() {
+  // Fetch department data on the server. Revalidate every 60s.
+  const res = await fetch(API_URL, { next: { revalidate: 60 } });
+  const data: Department | null = res.ok ? await res.json() : null;
+
+  const deptName = data?.name ?? "Department";
+  const phone = data?.phoneNo ?? "+977-1-1234567";
+  const email = data?.email ?? "info@tcioe.edu.np";
+  const thumbnail = data?.thumbnail;
+  const socialLinks = data?.socialLinks ?? [];
+
   return (
     <div className="py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -46,25 +73,36 @@ export default function ContactPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1 text-muted-foreground">
-                  <p className="font-medium">Department of Applied Science</p>
-                  <p>Tribhuvan University</p>
+                  <div className="flex items-center gap-3">
+                    {thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={thumbnail}
+                        alt={deptName}
+                        className="h-10 w-10 rounded-md object-cover"
+                      />
+                    ) : null}
+                    <div>
+                      <p className="font-medium">{deptName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {data?.shortName ?? "Tribhuvan University"}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="border-t pt-4">
                   <ul className="space-y-3 text-sm text-muted-foreground">
                     <li className="flex items-center gap-3">
                       <Phone className="h-4 w-4 text-secondary" />
-                      <a href="tel:+977-1-1234567" className="hover:underline">
-                        +977-1-1234567
+                      <a href={`tel:${phone}`} className="hover:underline">
+                        {phone}
                       </a>
                     </li>
                     <li className="flex items-center gap-3">
                       <Mail className="h-4 w-4 text-secondary" />
-                      <a
-                        href="mailto:info@example.com"
-                        className="hover:underline"
-                      >
-                        info@tcioe.edu.np
+                      <a href={`mailto:${email}`} className="hover:underline">
+                        {email}
                       </a>
                     </li>
                     <li className="flex items-center gap-3">

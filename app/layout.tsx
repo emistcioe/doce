@@ -26,7 +26,7 @@ export async function generateMetadata({
       : searchParams.department
     : undefined;
   const deptCode =
-    fromParams || fromQuery || process.env.DEFAULT_DEPARTMENT || "doece"; // default to electronics & computer
+    fromParams || fromQuery || process.env.NEXT_PUBLIC_DEPARTMENT || "doece"; // default to electronics & computer
 
   // Convert department code to slug
   const deptSlug = departmentSlugFromCode(deptCode) || deptCode;

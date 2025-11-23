@@ -125,14 +125,7 @@ export function Footer() {
                   Downloads
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/plans"
-                  className="hover:text-secondary transition-colors"
-                >
-                  Plans
-                </Link>
-              </li>
+              <li></li>
               <li>
                 <Link
                   href="/gallery"

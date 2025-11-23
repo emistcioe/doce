@@ -81,11 +81,25 @@ export function listDepartmentDownloads(
 // Events now come from the global website endpoint; keep signature for compatibility
 export function listDepartmentEvents(
   departmentUuid: string,
-  params?: { limit?: number; offset?: number; ordering?: string }
+  params?: {
+    limit?: number;
+    offset?: number;
+    ordering?: string;
+    search?: string;
+  }
 ): Promise<Paginated<DepartmentEvent>> {
+  const { limit, offset, ordering, search } = params || {};
+  const query: QueryParams = {
+    department: departmentUuid,
+    limit,
+    offset,
+    ordering,
+    search,
+  };
+
   return getJson<Paginated<DepartmentEvent>>(
-    `/api/website/global-events?department=${departmentUuid}`,
-    params
+    `/api/website/global-events`,
+    query
   );
 }
 
