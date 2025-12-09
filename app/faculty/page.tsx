@@ -13,6 +13,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { DEPARTMENT_CODE, SCHEDULE_API_BASE } from "@/lib/env";
 
+// Format title to proper case (ER -> Er., DR -> Dr., etc.)
+function formatTitle(title?: string | null): string {
+  if (!title) return "";
+  const upperTitle = title.toUpperCase();
+  if (
+    upperTitle === "ER" ||
+    upperTitle === "DR" ||
+    upperTitle === "AR" ||
+    upperTitle === "MR" ||
+    upperTitle === "MS" ||
+    upperTitle === "MRS"
+  ) {
+    return title.charAt(0).toUpperCase() + title.slice(1).toLowerCase() + ".";
+  }
+  return title;
+}
+
 export default function FacultyPage() {
   const { data: dept } = useDepartment();
   const {
@@ -153,7 +170,7 @@ export default function FacultyPage() {
                         {member.designation || "Staff"}
                       </p>
                       <h3 className="text-lg font-semibold text-gray-900">
-                        {member.title ? `${member.title} ` : ""}
+                        {member.title ? `${formatTitle(member.title)} ` : ""}
                         {member.name}
                       </h3>
                       {member.email && (
