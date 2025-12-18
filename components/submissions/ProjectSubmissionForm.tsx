@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { PROJECT_TYPES } from "./constants";
-import { CheckCircle2, Upload, X } from "lucide-react";
+import { CheckCircle2, X, Plus, Trash2, FileText, Image, Mail, ArrowRight } from "lucide-react";
 
 interface ProjectMemberForm {
   fullName: string;
@@ -91,14 +91,10 @@ export function ProjectSubmissionForm({ department }: Props) {
     email: string;
     sessionId: string;
   } | null>(null);
-  const [sendingOtp, setSendingOtp] = useState(false);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [reportFile, setReportFile] = useState<File | null>(null);
 
-  const submittedEmail = watch("submittedByEmail");
-  const submittedName = watch("submittedByName");
-
-  // Check for verification completion on mount and when returning from verification page
+  // Check for verification completion on mount
   useEffect(() => {
     const verified = searchParams.get("verified");
     if (verified === "true") {
@@ -110,6 +106,7 @@ export function ProjectSubmissionForm({ department }: Props) {
             setIsVerified(true);
             setVerificationData({ email: data.email, sessionId: data.sessionId });
             form.setValue("submittedByEmail", data.email);
+            if (data.name) form.setValue("submittedByName", data.name);
             toast({ description: "Email verified successfully!" });
           }
         } catch (e) {
@@ -118,63 +115,6 @@ export function ProjectSubmissionForm({ department }: Props) {
       }
     }
   }, [searchParams, form, toast]);
-
-  // Reset verification when email changes
-  useEffect(() => {
-    if (verificationData && submittedEmail !== verificationData.email) {
-      setIsVerified(false);
-      setVerificationData(null);
-      sessionStorage.removeItem("verification_complete");
-    }
-  }, [submittedEmail, verificationData]);
-
-  const memberLabel = useMemo(() => (index: number) => `Team member ${index + 1}`, []);
-
-  const handleSendVerification = async () => {
-    if (!submittedEmail || !submittedName) {
-      toast({ description: "Enter your name and campus email first", variant: "destructive" });
-      return;
-    }
-
-    setSendingOtp(true);
-    try {
-      const response = await fetch("/api/submissions/otp/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email: submittedEmail.trim(), 
-          full_name: submittedName.trim(), 
-          purpose: "project_submission" 
-        }),
-      });
-      
-      const data = await response.json().catch(() => ({}));
-      
-      if (!response.ok) {
-        throw new Error(data?.detail || data?.error || "Unable to send verification code");
-      }
-
-      const sessionId = data.session_id || data.sessionId;
-      
-      // Redirect to verification page
-      const params = new URLSearchParams({
-        email: submittedEmail.trim(),
-        name: submittedName.trim(),
-        type: "project",
-        session: sessionId,
-      });
-      
-      router.push(`/verification?${params.toString()}`);
-      
-    } catch (error) {
-      toast({
-        description: error instanceof Error ? error.message : "Unable to send verification code",
-        variant: "destructive",
-      });
-    } finally {
-      setSendingOtp(false);
-    }
-  };
 
   const onSubmit = async (values: ProjectFormValues) => {
     if (!isVerified || !verificationData?.sessionId) {
@@ -245,11 +185,26 @@ export function ProjectSubmissionForm({ department }: Props) {
     }
   };
 
+  // If not verified, show verification step first
+  if (!isVerified) {
+    return <VerificationStep department={department} />;
+  }
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      {/* Verified badge */}
+      <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 px-4 py-3 rounded-lg">
+        <CheckCircle2 className="h-5 w-5" />
+        <div>
+          <p className="font-medium">Email verified</p>
+          <p className="text-sm text-green-600">{verificationData?.email}</p>
+        </div>
+      </div>
+
+      {/* Project Details */}
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="title">Project title</Label>
+          <Label htmlFor="title">Project title *</Label>
           <Input id="title" {...register("title", { required: "Title is required" })} />
           {errors.title && <p className="text-sm text-red-600">{errors.title.message}</p>}
         </div>
@@ -272,7 +227,7 @@ export function ProjectSubmissionForm({ department }: Props) {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="supervisorName">Supervisor name</Label>
+          <Label htmlFor="supervisorName">Supervisor name *</Label>
           <Input
             id="supervisorName"
             {...register("supervisorName", { required: "Supervisor name is required" })}
@@ -283,7 +238,7 @@ export function ProjectSubmissionForm({ department }: Props) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="supervisorEmail">Supervisor email</Label>
-          <Input id="supervisorEmail" type="email" {...register("supervisorEmail")}/>
+          <Input id="supervisorEmail" type="email" {...register("supervisorEmail")} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="startDate">Start date</Label>
@@ -301,7 +256,7 @@ export function ProjectSubmissionForm({ department }: Props) {
           <Label htmlFor="githubUrl">GitHub URL</Label>
           <Input id="githubUrl" type="url" placeholder="https://github.com/..." {...register("githubUrl")} />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 md:col-span-2">
           <Label htmlFor="demoUrl">Demo URL</Label>
           <Input id="demoUrl" type="url" placeholder="https://" {...register("demoUrl")} />
         </div>
@@ -309,11 +264,11 @@ export function ProjectSubmissionForm({ department }: Props) {
 
       <div className="space-y-2">
         <Label htmlFor="abstract">Abstract</Label>
-        <Textarea id="abstract" rows={3} {...register("abstract")}></Textarea>
+        <Textarea id="abstract" rows={3} {...register("abstract")} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="description">Detailed description</Label>
-        <Textarea id="description" rows={5} {...register("description")}></Textarea>
+        <Textarea id="description" rows={5} {...register("description")} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="technologiesUsed">Technologies</Label>
@@ -322,207 +277,335 @@ export function ProjectSubmissionForm({ department }: Props) {
           rows={2}
           placeholder="React, Django, PostgreSQL"
           {...register("technologiesUsed")}
-        ></Textarea>
+        />
       </div>
 
-      <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
+      {/* Attachments - Improved UI */}
+      <div className="space-y-4">
         <div>
           <h3 className="font-semibold text-slate-900">Attachments</h3>
-          <p className="text-sm text-slate-600">Upload a thumbnail image and project report (optional).</p>
+          <p className="text-sm text-slate-500">Upload a thumbnail image and project report (optional)</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="thumbnail">Thumbnail image</Label>
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="thumbnail"
-                className="flex items-center gap-2 px-4 py-2 border rounded-md cursor-pointer hover:bg-slate-100 transition-colors"
-              >
-                <Upload className="h-4 w-4" />
-                <span className="text-sm">{thumbnailFile ? "Change" : "Choose file"}</span>
-              </label>
-              <input
-                id="thumbnail"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
-              />
-              {thumbnailFile && (
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <span className="truncate max-w-[150px]">{thumbnailFile.name}</span>
+          {/* Thumbnail Upload */}
+          <div className="relative">
+            <input
+              id="thumbnail"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
+            />
+            {thumbnailFile ? (
+              <div className="border-2 border-primary/20 bg-primary/5 rounded-lg p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Image className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate max-w-[180px]">{thumbnailFile.name}</p>
+                      <p className="text-xs text-slate-500">{(thumbnailFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setThumbnailFile(null)}
-                    className="text-slate-400 hover:text-slate-600"
+                    className="p-1 hover:bg-slate-200 rounded"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-4 w-4 text-slate-500" />
                   </button>
                 </div>
-              )}
-            </div>
-            <p className="text-xs text-slate-500">PNG, JPG up to 5MB</p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="reportFile">Project report (PDF)</Label>
-            <div className="flex items-center gap-2">
+              </div>
+            ) : (
               <label
-                htmlFor="reportFile"
-                className="flex items-center gap-2 px-4 py-2 border rounded-md cursor-pointer hover:bg-slate-100 transition-colors"
+                htmlFor="thumbnail"
+                className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-lg p-6 cursor-pointer hover:border-primary/50 hover:bg-slate-50 transition-colors"
               >
-                <Upload className="h-4 w-4" />
-                <span className="text-sm">{reportFile ? "Change" : "Choose file"}</span>
+                <div className="p-3 bg-slate-100 rounded-full mb-3">
+                  <Image className="h-6 w-6 text-slate-500" />
+                </div>
+                <p className="font-medium text-sm">Thumbnail image</p>
+                <p className="text-xs text-slate-500 mt-1">PNG, JPG up to 5MB</p>
               </label>
-              <input
-                id="reportFile"
-                type="file"
-                accept=".pdf"
-                className="hidden"
-                onChange={(e) => setReportFile(e.target.files?.[0] || null)}
-              />
-              {reportFile && (
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <span className="truncate max-w-[150px]">{reportFile.name}</span>
+            )}
+          </div>
+
+          {/* Report Upload */}
+          <div className="relative">
+            <input
+              id="reportFile"
+              type="file"
+              accept=".pdf"
+              className="hidden"
+              onChange={(e) => setReportFile(e.target.files?.[0] || null)}
+            />
+            {reportFile ? (
+              <div className="border-2 border-primary/20 bg-primary/5 rounded-lg p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate max-w-[180px]">{reportFile.name}</p>
+                      <p className="text-xs text-slate-500">{(reportFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setReportFile(null)}
-                    className="text-slate-400 hover:text-slate-600"
+                    className="p-1 hover:bg-slate-200 rounded"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-4 w-4 text-slate-500" />
                   </button>
                 </div>
-              )}
-            </div>
-            <p className="text-xs text-slate-500">PDF up to 10MB</p>
+              </div>
+            ) : (
+              <label
+                htmlFor="reportFile"
+                className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-lg p-6 cursor-pointer hover:border-primary/50 hover:bg-slate-50 transition-colors"
+              >
+                <div className="p-3 bg-slate-100 rounded-full mb-3">
+                  <FileText className="h-6 w-6 text-slate-500" />
+                </div>
+                <p className="font-medium text-sm">Project report</p>
+                <p className="text-xs text-slate-500 mt-1">PDF up to 10MB</p>
+              </label>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
-        <div>
-          <h3 className="font-semibold text-slate-900">Team members</h3>
-          <p className="text-sm text-slate-600">Add at least one student.</p>
-        </div>
-        {fields.map((field, index) => (
-          <div key={field.id} className="space-y-3 pb-4 border-b last:border-b-0 last:pb-0">
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-1">
-                <Label>{memberLabel(index)}</Label>
-                <Input
-                  placeholder="Full name"
-                  {...register(`members.${index}.fullName`, {
-                    required: index === 0 ? "Name is required" : false,
-                  })}
-                />
-                {errors.members?.[index]?.fullName && (
-                  <p className="text-sm text-red-600">
-                    {errors.members?.[index]?.fullName?.message as string}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-1">
-                <Label>Roll number</Label>
-                <Input
-                  placeholder="Roll number"
-                  {...register(`members.${index}.rollNumber`, {
-                    required: index === 0 ? "Roll number is required" : false,
-                  })}
-                />
-                {errors.members?.[index]?.rollNumber && (
-                  <p className="text-sm text-red-600">
-                    {errors.members?.[index]?.rollNumber?.message as string}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-1">
-                <Label>Email</Label>
-                <Input type="email" placeholder="name@tcioe.edu.np" {...register(`members.${index}.email`)} />
-              </div>
-              <div className="space-y-1">
-                <Label>Role</Label>
-                <Input placeholder="Team Member" {...register(`members.${index}.role`)} />
-              </div>
-              <div className="space-y-1">
-                <Label>LinkedIn URL</Label>
-                <Input type="url" placeholder="https://linkedin.com/in/..." {...register(`members.${index}.linkedinUrl`)} />
-              </div>
-              <div className="space-y-1">
-                <Label>GitHub URL</Label>
-                <Input type="url" placeholder="https://github.com/..." {...register(`members.${index}.githubUrl`)} />
-              </div>
-            </div>
-            {fields.length > 1 && (
-              <div className="text-right">
-                <Button type="button" variant="ghost" size="sm" onClick={() => remove(index)}>
-                  Remove member
-                </Button>
-              </div>
-            )}
+      {/* Team Members - Improved UI */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-slate-900">Team Members</h3>
+            <p className="text-sm text-slate-500">Add all project team members</p>
           </div>
-        ))}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() =>
-            append({ fullName: "", rollNumber: "", email: "", role: "Team Member", linkedinUrl: "", githubUrl: "" })
-          }
-        >
-          Add another member
-        </Button>
-      </div>
-
-      <div className="space-y-4 border rounded-lg p-4 bg-muted/50">
-        <h3 className="font-semibold">Campus email verification</h3>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-1">
-            <Label htmlFor="submittedByName">Your full name</Label>
-            <Input
-              id="submittedByName"
-              placeholder="Submitter name"
-              disabled={isVerified}
-              {...register("submittedByName", { required: "Your name is required" })}
-            />
-            {errors.submittedByName && (
-              <p className="text-sm text-red-600">{errors.submittedByName.message}</p>
-            )}
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="submittedByEmail">Campus email</Label>
-            <Input
-              id="submittedByEmail"
-              type="email"
-              placeholder="name@tcioe.edu.np"
-              disabled={isVerified}
-              {...register("submittedByEmail", { required: "Campus email is required" })}
-            />
-            {errors.submittedByEmail && (
-              <p className="text-sm text-red-600">{errors.submittedByEmail.message}</p>
-            )}
-          </div>
-        </div>
-        
-        {isVerified ? (
-          <div className="flex items-center gap-2 text-green-700 bg-green-50 px-3 py-2 rounded-md">
-            <CheckCircle2 className="h-4 w-4" />
-            <span className="text-sm font-medium">Email verified: {verificationData?.email}</span>
-          </div>
-        ) : (
           <Button
             type="button"
             variant="outline"
-            onClick={handleSendVerification}
-            disabled={sendingOtp || !submittedEmail || !submittedName}
+            size="sm"
+            onClick={() =>
+              append({ fullName: "", rollNumber: "", email: "", role: "Team Member", linkedinUrl: "", githubUrl: "" })
+            }
           >
-            {sendingOtp ? "Sending..." : "Verify email"}
+            <Plus className="h-4 w-4 mr-1" />
+            Add member
           </Button>
-        )}
+        </div>
+
+        <div className="space-y-4">
+          {fields.map((field, index) => (
+            <div
+              key={field.id}
+              className="border rounded-lg p-4 bg-slate-50/50 relative"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-medium text-slate-700">
+                  Member {index + 1}
+                </span>
+                {fields.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => remove(index)}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 px-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-600">Full name *</Label>
+                  <Input
+                    placeholder="Enter full name"
+                    className="h-9"
+                    {...register(`members.${index}.fullName`, {
+                      required: index === 0 ? "Name is required" : false,
+                    })}
+                  />
+                  {errors.members?.[index]?.fullName && (
+                    <p className="text-xs text-red-600">{errors.members?.[index]?.fullName?.message as string}</p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-600">Roll number *</Label>
+                  <Input
+                    placeholder="Enter roll number"
+                    className="h-9"
+                    {...register(`members.${index}.rollNumber`, {
+                      required: index === 0 ? "Roll number is required" : false,
+                    })}
+                  />
+                  {errors.members?.[index]?.rollNumber && (
+                    <p className="text-xs text-red-600">{errors.members?.[index]?.rollNumber?.message as string}</p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-600">Email</Label>
+                  <Input
+                    type="email"
+                    placeholder="name@tcioe.edu.np"
+                    className="h-9"
+                    {...register(`members.${index}.email`)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-600">Role</Label>
+                  <Input
+                    placeholder="Team Member"
+                    className="h-9"
+                    {...register(`members.${index}.role`)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-600">LinkedIn URL</Label>
+                  <Input
+                    type="url"
+                    placeholder="https://linkedin.com/in/..."
+                    className="h-9"
+                    {...register(`members.${index}.linkedinUrl`)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-600">GitHub URL</Label>
+                  <Input
+                    type="url"
+                    placeholder="https://github.com/..."
+                    className="h-9"
+                    {...register(`members.${index}.githubUrl`)}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="flex justify-end">
-        <Button type="submit" disabled={isSubmitting || !isVerified}>
+      <div className="flex justify-end pt-4 border-t">
+        <Button type="submit" disabled={isSubmitting} size="lg">
           {isSubmitting ? "Submitting..." : "Submit project"}
         </Button>
       </div>
     </form>
+  );
+}
+
+// Separate verification step component
+function VerificationStep({ department }: { department: DepartmentDetail }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const handleVerify = async () => {
+    if (!name.trim() || !email.trim()) {
+      toast({ description: "Please enter your name and email", variant: "destructive" });
+      return;
+    }
+
+    setSending(true);
+    try {
+      const response = await fetch("/api/submissions/otp/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          full_name: name.trim(),
+          purpose: "project_submission",
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.detail || data?.error || "Unable to send verification code");
+      }
+
+      const sessionId = data.session_id || data.sessionId;
+
+      // Store name for later retrieval
+      sessionStorage.setItem("pending_verification_name", name.trim());
+
+      const params = new URLSearchParams({
+        email: email.trim(),
+        name: name.trim(),
+        type: "project",
+        session: sessionId,
+      });
+
+      router.push(`/verification?${params.toString()}`);
+    } catch (error) {
+      toast({
+        description: error instanceof Error ? error.message : "Unable to send verification code",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto">
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+          <Mail className="h-8 w-8 text-primary" />
+        </div>
+        <h2 className="text-2xl font-semibold text-slate-900">Verify your email</h2>
+        <p className="text-slate-600 mt-2">
+          To submit a project, please verify your campus email first.
+        </p>
+      </div>
+
+      <div className="space-y-4 bg-slate-50 border rounded-lg p-6">
+        <div className="space-y-2">
+          <Label htmlFor="verifyName">Your full name</Label>
+          <Input
+            id="verifyName"
+            placeholder="Enter your full name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="verifyEmail">Campus email</Label>
+          <Input
+            id="verifyEmail"
+            type="email"
+            placeholder="name@tcioe.edu.np"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <p className="text-xs text-slate-500">Use your @tcioe.edu.np email address</p>
+        </div>
+
+        <Button
+          onClick={handleVerify}
+          disabled={sending || !name.trim() || !email.trim()}
+          className="w-full"
+          size="lg"
+        >
+          {sending ? (
+            "Sending code..."
+          ) : (
+            <>
+              Continue
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </>
+          )}
+        </Button>
+      </div>
+
+      <p className="text-center text-sm text-slate-500 mt-6">
+        We&apos;ll send a 6-digit verification code to your email
+      </p>
+    </div>
   );
 }

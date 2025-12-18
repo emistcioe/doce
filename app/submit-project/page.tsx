@@ -43,7 +43,7 @@ export default async function SubmitProjectPage() {
   }
 
   const features = [
-    { title: "Verified Submission", description: "Campus email OTP verification" },
+    
     { title: "Department Review", description: "QA team reviews before publishing" },
     { title: "Public Showcase", description: "Featured on department website" },
   ];
