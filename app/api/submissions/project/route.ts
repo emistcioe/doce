@@ -6,6 +6,27 @@ const API_BASE_URL = API_BASE || "https://cdn.tcioe.edu.np";
 
 export async function POST(request: NextRequest) {
   try {
+    const contentType = request.headers.get("content-type") || "";
+    
+    // Handle FormData (with file uploads)
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      
+      // Forward the FormData directly to the backend
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/public/project-mod/projects/submit/`,
+        {
+          method: "POST",
+          body: formData,
+          cache: "no-store",
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+      return NextResponse.json(data, { status: response.status });
+    }
+    
+    // Handle JSON (backward compatibility)
     const payload = await request.json();
     const response = await fetch(
       `${API_BASE_URL}/api/v1/public/project-mod/projects/submit/`,

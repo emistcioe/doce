@@ -18,6 +18,7 @@ interface AuthorForm {
   email: string;
   affiliation: string;
   country: string;
+  bio: string;
 }
 
 interface JournalFormValues {
@@ -48,7 +49,7 @@ const defaultValues: JournalFormValues = {
   submittedByName: "",
   submittedByEmail: "",
   authors: [
-    { givenName: "", familyName: "", email: "", affiliation: "", country: "" },
+    { givenName: "", familyName: "", email: "", affiliation: "", country: "", bio: "" },
   ],
 };
 
@@ -169,6 +170,7 @@ export function JournalSubmissionForm({ department }: Props) {
         email: author.email.trim() || undefined,
         affiliation: author.affiliation.trim() || undefined,
         country: author.country.trim() || undefined,
+        bio: author.bio.trim() || undefined,
       }))
       .filter((author) => author.given_name);
 
@@ -302,6 +304,10 @@ export function JournalSubmissionForm({ department }: Props) {
               <Label>Country</Label>
               <Input placeholder="Nepal" {...register(`authors.${index}.country`)} />
             </div>
+            <div className="space-y-1 md:col-span-2">
+              <Label>Bio</Label>
+              <Textarea placeholder="Brief author bio (optional)" rows={2} {...register(`authors.${index}.bio`)} />
+            </div>
             {fields.length > 1 && (
               <div className="md:col-span-2 text-right">
                 <Button type="button" variant="ghost" onClick={() => remove(index)}>
@@ -315,7 +321,7 @@ export function JournalSubmissionForm({ department }: Props) {
           type="button"
           variant="outline"
           onClick={() =>
-            append({ givenName: "", familyName: "", email: "", affiliation: "", country: "" })
+            append({ givenName: "", familyName: "", email: "", affiliation: "", country: "", bio: "" })
           }
         >
           Add author

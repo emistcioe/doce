@@ -29,6 +29,10 @@ interface ParticipantForm {
   participantType: string;
   email: string;
   role: string;
+  designation: string;
+  organization: string;
+  linkedinUrl: string;
+  orcidId: string;
 }
 
 interface ResearchFormValues {
@@ -75,7 +79,7 @@ const defaultValues: ResearchFormValues = {
   submittedByName: "",
   submittedByEmail: "",
   participants: [
-    { fullName: "", participantType: "student", email: "", role: "Researcher" },
+    { fullName: "", participantType: "student", email: "", role: "Researcher", designation: "", organization: "", linkedinUrl: "", orcidId: "" },
   ],
 };
 
@@ -195,6 +199,10 @@ export function ResearchSubmissionForm({ department }: Props) {
         participant_type: participant.participantType,
         email: participant.email.trim() || undefined,
         role: participant.role.trim() || undefined,
+        designation: participant.designation.trim() || undefined,
+        organization: participant.organization.trim() || undefined,
+        linkedin_url: participant.linkedinUrl.trim() || undefined,
+        orcid_id: participant.orcidId.trim() || undefined,
         department: department.uuid,
       }))
       .filter((participant) => participant.full_name);
@@ -395,6 +403,22 @@ export function ResearchSubmissionForm({ department }: Props) {
               <Label>Email</Label>
               <Input type="email" placeholder="name@tcioe.edu.np" {...register(`participants.${index}.email`)} />
             </div>
+            <div className="space-y-1">
+              <Label>Designation</Label>
+              <Input placeholder="e.g. Student, Professor" {...register(`participants.${index}.designation`)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Organization</Label>
+              <Input placeholder="e.g. Thapathali Campus" {...register(`participants.${index}.organization`)} />
+            </div>
+            <div className="space-y-1">
+              <Label>LinkedIn URL</Label>
+              <Input type="url" placeholder="https://linkedin.com/in/..." {...register(`participants.${index}.linkedinUrl`)} />
+            </div>
+            <div className="space-y-1">
+              <Label>ORCID ID</Label>
+              <Input placeholder="0000-0000-0000-0000" {...register(`participants.${index}.orcidId`)} />
+            </div>
             {fields.length > 1 && (
               <div className="md:col-span-2 text-right">
                 <Button type="button" variant="ghost" onClick={() => remove(index)}>
@@ -408,7 +432,7 @@ export function ResearchSubmissionForm({ department }: Props) {
           type="button"
           variant="outline"
           onClick={() =>
-            append({ fullName: "", participantType: "student", email: "", role: "Researcher" })
+            append({ fullName: "", participantType: "student", email: "", role: "Researcher", designation: "", organization: "", linkedinUrl: "", orcidId: "" })
           }
         >
           Add participant

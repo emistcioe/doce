@@ -18,13 +18,15 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { PROJECT_TYPES } from "./constants";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Upload, X } from "lucide-react";
 
 interface ProjectMemberForm {
   fullName: string;
   rollNumber: string;
   email: string;
   role: string;
+  linkedinUrl: string;
+  githubUrl: string;
 }
 
 interface ProjectFormValues {
@@ -61,7 +63,7 @@ const defaultValues: ProjectFormValues = {
   submittedByName: "",
   submittedByEmail: "",
   members: [
-    { fullName: "", rollNumber: "", email: "", role: "Team Member" },
+    { fullName: "", rollNumber: "", email: "", role: "Team Member", linkedinUrl: "", githubUrl: "" },
   ],
 };
 
@@ -90,6 +92,8 @@ export function ProjectSubmissionForm({ department }: Props) {
     sessionId: string;
   } | null>(null);
   const [sendingOtp, setSendingOtp] = useState(false);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [reportFile, setReportFile] = useState<File | null>(null);
 
   const submittedEmail = watch("submittedByEmail");
   const submittedName = watch("submittedByName");
@@ -184,6 +188,8 @@ export function ProjectSubmissionForm({ department }: Props) {
         roll_number: member.rollNumber.trim(),
         email: member.email.trim() || undefined,
         role: member.role.trim() || undefined,
+        linkedin_url: member.linkedinUrl.trim() || undefined,
+        github_url: member.githubUrl.trim() || undefined,
       }))
       .filter((member) => member.full_name && member.roll_number);
 
@@ -192,31 +198,32 @@ export function ProjectSubmissionForm({ department }: Props) {
       return;
     }
 
-    const payload = {
-      title: values.title.trim(),
-      abstract: values.abstract.trim(),
-      description: values.description.trim(),
-      project_type: values.projectType,
-      supervisor_name: values.supervisorName.trim(),
-      supervisor_email: values.supervisorEmail.trim() || undefined,
-      start_date: values.startDate || undefined,
-      end_date: values.endDate || undefined,
-      academic_year: values.academicYear.trim() || undefined,
-      github_url: values.githubUrl.trim() || undefined,
-      demo_url: values.demoUrl.trim() || undefined,
-      technologies_used: values.technologiesUsed.trim() || undefined,
-      submitted_by_name: values.submittedByName.trim(),
-      submitted_by_email: verificationData.email,
-      department: department.uuid,
-      members,
-      otp_session: verificationData.sessionId,
-    };
+    const formData = new FormData();
+    formData.append("title", values.title.trim());
+    formData.append("abstract", values.abstract.trim());
+    formData.append("description", values.description.trim());
+    formData.append("project_type", values.projectType);
+    formData.append("supervisor_name", values.supervisorName.trim());
+    if (values.supervisorEmail.trim()) formData.append("supervisor_email", values.supervisorEmail.trim());
+    if (values.startDate) formData.append("start_date", values.startDate);
+    if (values.endDate) formData.append("end_date", values.endDate);
+    if (values.academicYear.trim()) formData.append("academic_year", values.academicYear.trim());
+    if (values.githubUrl.trim()) formData.append("github_url", values.githubUrl.trim());
+    if (values.demoUrl.trim()) formData.append("demo_url", values.demoUrl.trim());
+    if (values.technologiesUsed.trim()) formData.append("technologies_used", values.technologiesUsed.trim());
+    formData.append("submitted_by_name", values.submittedByName.trim());
+    formData.append("submitted_by_email", verificationData.email);
+    formData.append("department", department.uuid);
+    formData.append("members", JSON.stringify(members));
+    formData.append("otp_session", verificationData.sessionId);
+    
+    if (thumbnailFile) formData.append("thumbnail", thumbnailFile);
+    if (reportFile) formData.append("report_file", reportFile);
 
     try {
       const response = await fetch("/api/submissions/project", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: formData,
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -227,6 +234,8 @@ export function ProjectSubmissionForm({ department }: Props) {
       reset(defaultValues);
       setIsVerified(false);
       setVerificationData(null);
+      setThumbnailFile(null);
+      setReportFile(null);
       sessionStorage.removeItem("verification_complete");
     } catch (error) {
       toast({
@@ -318,50 +327,133 @@ export function ProjectSubmissionForm({ department }: Props) {
 
       <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
         <div>
+          <h3 className="font-semibold text-slate-900">Attachments</h3>
+          <p className="text-sm text-slate-600">Upload a thumbnail image and project report (optional).</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="thumbnail">Thumbnail image</Label>
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="thumbnail"
+                className="flex items-center gap-2 px-4 py-2 border rounded-md cursor-pointer hover:bg-slate-100 transition-colors"
+              >
+                <Upload className="h-4 w-4" />
+                <span className="text-sm">{thumbnailFile ? "Change" : "Choose file"}</span>
+              </label>
+              <input
+                id="thumbnail"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
+              />
+              {thumbnailFile && (
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <span className="truncate max-w-[150px]">{thumbnailFile.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setThumbnailFile(null)}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-slate-500">PNG, JPG up to 5MB</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="reportFile">Project report (PDF)</Label>
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="reportFile"
+                className="flex items-center gap-2 px-4 py-2 border rounded-md cursor-pointer hover:bg-slate-100 transition-colors"
+              >
+                <Upload className="h-4 w-4" />
+                <span className="text-sm">{reportFile ? "Change" : "Choose file"}</span>
+              </label>
+              <input
+                id="reportFile"
+                type="file"
+                accept=".pdf"
+                className="hidden"
+                onChange={(e) => setReportFile(e.target.files?.[0] || null)}
+              />
+              {reportFile && (
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <span className="truncate max-w-[150px]">{reportFile.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setReportFile(null)}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-slate-500">PDF up to 10MB</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
+        <div>
           <h3 className="font-semibold text-slate-900">Team members</h3>
           <p className="text-sm text-slate-600">Add at least one student.</p>
         </div>
         {fields.map((field, index) => (
-          <div key={field.id} className="grid gap-3 md:grid-cols-2">
-            <div className="space-y-1">
-              <Label>{memberLabel(index)}</Label>
-              <Input
-                placeholder="Full name"
-                {...register(`members.${index}.fullName`, {
-                  required: index === 0 ? "Name is required" : false,
-                })}
-              />
-              {errors.members?.[index]?.fullName && (
-                <p className="text-sm text-red-600">
-                  {errors.members?.[index]?.fullName?.message as string}
-                </p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <Label>Roll number</Label>
-              <Input
-                placeholder="Roll number"
-                {...register(`members.${index}.rollNumber`, {
-                  required: index === 0 ? "Roll number is required" : false,
-                })}
-              />
-              {errors.members?.[index]?.rollNumber && (
-                <p className="text-sm text-red-600">
-                  {errors.members?.[index]?.rollNumber?.message as string}
-                </p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <Label>Email</Label>
-              <Input type="email" placeholder="name@tcioe.edu.np" {...register(`members.${index}.email`)} />
-            </div>
-            <div className="space-y-1">
-              <Label>Role</Label>
-              <Input placeholder="Team Member" {...register(`members.${index}.role`)} />
+          <div key={field.id} className="space-y-3 pb-4 border-b last:border-b-0 last:pb-0">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label>{memberLabel(index)}</Label>
+                <Input
+                  placeholder="Full name"
+                  {...register(`members.${index}.fullName`, {
+                    required: index === 0 ? "Name is required" : false,
+                  })}
+                />
+                {errors.members?.[index]?.fullName && (
+                  <p className="text-sm text-red-600">
+                    {errors.members?.[index]?.fullName?.message as string}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label>Roll number</Label>
+                <Input
+                  placeholder="Roll number"
+                  {...register(`members.${index}.rollNumber`, {
+                    required: index === 0 ? "Roll number is required" : false,
+                  })}
+                />
+                {errors.members?.[index]?.rollNumber && (
+                  <p className="text-sm text-red-600">
+                    {errors.members?.[index]?.rollNumber?.message as string}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label>Email</Label>
+                <Input type="email" placeholder="name@tcioe.edu.np" {...register(`members.${index}.email`)} />
+              </div>
+              <div className="space-y-1">
+                <Label>Role</Label>
+                <Input placeholder="Team Member" {...register(`members.${index}.role`)} />
+              </div>
+              <div className="space-y-1">
+                <Label>LinkedIn URL</Label>
+                <Input type="url" placeholder="https://linkedin.com/in/..." {...register(`members.${index}.linkedinUrl`)} />
+              </div>
+              <div className="space-y-1">
+                <Label>GitHub URL</Label>
+                <Input type="url" placeholder="https://github.com/..." {...register(`members.${index}.githubUrl`)} />
+              </div>
             </div>
             {fields.length > 1 && (
-              <div className="md:col-span-2 text-right">
-                <Button type="button" variant="ghost" onClick={() => remove(index)}>
+              <div className="text-right">
+                <Button type="button" variant="ghost" size="sm" onClick={() => remove(index)}>
                   Remove member
                 </Button>
               </div>
@@ -372,7 +464,7 @@ export function ProjectSubmissionForm({ department }: Props) {
           type="button"
           variant="outline"
           onClick={() =>
-            append({ fullName: "", rollNumber: "", email: "", role: "Team Member" })
+            append({ fullName: "", rollNumber: "", email: "", role: "Team Member", linkedinUrl: "", githubUrl: "" })
           }
         >
           Add another member
