@@ -51,7 +51,7 @@ const defaultValues: ProjectFormValues = {
   title: "",
   abstract: "",
   description: "",
-  projectType: "final_year",
+  projectType: "major",
   supervisorName: "",
   supervisorEmail: "",
   startDate: "",

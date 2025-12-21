@@ -1,5 +1,4 @@
 export const PROJECT_TYPES = [
-  { value: "final_year", label: "Final Year" },
   { value: "minor", label: "Minor" },
   { value: "major", label: "Major" },
   { value: "research", label: "Research" },
