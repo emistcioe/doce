@@ -19,6 +19,7 @@ const navigationItems = [
   { name: "Notices", href: "/notices", group: "main" },
   { name: "Downloads", href: "/downloads", group: "main" },
   { name: "Gallery", href: "/gallery", group: "more" },
+  { name: "Contact", href: "/contact", group: "more" },
 ];
 
 export function Navigation() {

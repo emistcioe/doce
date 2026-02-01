@@ -28,3 +28,13 @@ export const PARTICIPANT_TYPES = [
   { value: "staff", label: "Faculty / Staff" },
   { value: "external", label: "External Collaborator" }
 ];
+
+export const CONTACT_CATEGORIES = [
+  { value: "general", label: "General" },
+  { value: "academic", label: "Academic" },
+  { value: "admission", label: "Admission" },
+  { value: "examination", label: "Examination" },
+  { value: "administration", label: "Administration" },
+  { value: "research", label: "Research" },
+  { value: "other", label: "Other" }
+];
