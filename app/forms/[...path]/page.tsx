@@ -207,10 +207,7 @@ export default function RegistrationFormPage({
       }
 
       fields.forEach((field) => {
-        const allowImage =
-          field.fieldType === "image" ||
-          Boolean(field.config?.allow_image ?? field.config?.allowImage);
-        if (allowImage) {
+        if (field.fieldType === "image") {
           const file = files[field.id];
           if (file) {
             formData.append(`field_${field.id}`, file);
@@ -362,9 +359,7 @@ export default function RegistrationFormPage({
             const options = field.options ?? [];
             const ratingMax = Number(field.config?.max ?? 5);
             const placeholder = field.config?.placeholder ?? "";
-            const allowImageUpload =
-              field.fieldType === "image" ||
-              Boolean(field.config?.allow_image ?? field.config?.allowImage);
+            const questionImage = field.config?.question_image as string | undefined;
 
             if (field.fieldType === "section_break") {
               return (
@@ -387,6 +382,16 @@ export default function RegistrationFormPage({
                 key={fieldId}
                 className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
               >
+                {questionImage && (
+                  <div className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                    <img
+                      src={questionImage}
+                      alt="Question illustration"
+                      className="h-auto w-full object-contain"
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-1">
                   <Label className="text-sm font-medium text-slate-900">
                     {field.label}
@@ -533,10 +538,10 @@ export default function RegistrationFormPage({
                     </div>
                   )}
 
-                  {allowImageUpload && (
+                  {field.fieldType === "image" && (
                     <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3">
                       <Label className="text-xs font-medium text-slate-700">
-                        {field.fieldType === "image" ? "Upload image" : "Upload image (optional)"}
+                        Upload image
                       </Label>
                       <Input
                         className="mt-2"
