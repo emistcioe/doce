@@ -81,6 +81,25 @@ const resolveFieldConfig = (field: any) =>
     any
   >;
 
+const resolveQuestionImage = (field: any) => {
+  const config = resolveFieldConfig(field);
+  const raw =
+    config?.question_image ??
+    config?.questionImage ??
+    field?.question_image ??
+    field?.questionImage ??
+    null;
+  if (!raw || typeof raw !== "string") return undefined;
+  if (raw.startsWith("http")) return raw;
+  if (raw.startsWith("//")) return `https:${raw}`;
+  const base =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "https://cdn.tcioe.edu.np";
+  if (raw.startsWith("/")) {
+    return `${base.replace(/\/$/, "")}${raw}`;
+  }
+  return raw;
+};
+
 export default function RegistrationFormPage({
   params,
 }: {
@@ -466,7 +485,7 @@ export default function RegistrationFormPage({
             const config = resolveFieldConfig(field);
             const ratingMax = Number(config?.max ?? 5);
             const placeholder = config?.placeholder ?? "";
-            const questionImage = config?.question_image as string | undefined;
+            const questionImage = resolveQuestionImage(field);
 
             return (
               <div
