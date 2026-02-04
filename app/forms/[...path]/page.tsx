@@ -78,6 +78,7 @@ export default function RegistrationFormPage({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitterEmail, setSubmitterEmail] = useState<string>("");
   const [otpCode, setOtpCode] = useState<string>("");
+  const [activeSectionIndex, setActiveSectionIndex] = useState<number>(0);
   const otp = useSubmissionOtp("form_submission");
 
   const pathParts = params?.path ?? [];
@@ -143,9 +144,9 @@ export default function RegistrationFormPage({
     setFiles((prev) => ({ ...prev, [fieldId]: file }));
   };
 
-  const validate = () => {
+  const validateFields = (targetFields: RegistrationField[], replace = false) => {
     const errors: Record<string, string> = {};
-    fields.forEach((field) => {
+    targetFields.forEach((field) => {
       if (field.fieldType === "section_break") {
         return;
       }
@@ -160,9 +161,58 @@ export default function RegistrationFormPage({
         }
       }
     });
-    setFieldErrors(errors);
+    if (replace) {
+      setFieldErrors(errors);
+    } else {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        targetFields.forEach((field) => {
+          delete next[field.id];
+        });
+        return { ...next, ...errors };
+      });
+    }
     return Object.keys(errors).length === 0;
   };
+
+  const validateAll = () => validateFields(fields, true);
+
+  const sections = useMemo(() => {
+    const result: { id: string; title?: string; description?: string; fields: RegistrationField[] }[] = [];
+    let current = { id: "section-1", title: "", description: "", fields: [] as RegistrationField[] };
+    let index = 1;
+
+    fields.forEach((field) => {
+      if (field.fieldType === "section_break") {
+        if (current.fields.length || current.title || current.description) {
+          result.push(current);
+        }
+        index += 1;
+        current = {
+          id: `section-${index}`,
+          title: field.label,
+          description: field.helpText,
+          fields: [],
+        };
+      } else {
+        current.fields.push(field);
+      }
+    });
+
+    if (current.fields.length || current.title || current.description || result.length === 0) {
+      result.push(current);
+    }
+
+    return result;
+  }, [fields]);
+
+  useEffect(() => {
+    setActiveSectionIndex(0);
+  }, [form?.uuid]);
+
+  const totalSections = sections.length;
+  const currentSection = sections[activeSectionIndex] ?? sections[0];
+  const sectionFields = currentSection?.fields ?? [];
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -174,7 +224,7 @@ export default function RegistrationFormPage({
       return;
     }
 
-    if (!validate()) {
+    if (!validateAll()) {
       return;
     }
 
@@ -352,7 +402,40 @@ export default function RegistrationFormPage({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          {fields.map((field) => {
+          {(totalSections > 1 || currentSection?.title || currentSection?.description) && (
+            <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              {totalSections > 1 && (
+                <>
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-semibold text-slate-800">
+                      Section {activeSectionIndex + 1} of {totalSections}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Progress {Math.round(((activeSectionIndex + 1) / totalSections) * 100)}%
+                    </p>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                    <div
+                      className="h-full rounded-full bg-slate-900 transition-all"
+                      style={{ width: `${((activeSectionIndex + 1) / totalSections) * 100}%` }}
+                    />
+                  </div>
+                </>
+              )}
+              {(currentSection?.title || currentSection?.description) && (
+                <div className="pt-2">
+                  {currentSection?.title && (
+                    <p className="text-base font-semibold text-slate-900">{currentSection.title}</p>
+                  )}
+                  {currentSection?.description && (
+                    <p className="text-sm text-slate-600">{currentSection.description}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {sectionFields.map((field) => {
             const fieldId = field.id;
             const value = values[fieldId];
             const errorMessage = fieldErrors[fieldId];
@@ -360,22 +443,6 @@ export default function RegistrationFormPage({
             const ratingMax = Number(field.config?.max ?? 5);
             const placeholder = field.config?.placeholder ?? "";
             const questionImage = field.config?.question_image as string | undefined;
-
-            if (field.fieldType === "section_break") {
-              return (
-                <div
-                  key={fieldId}
-                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    {field.label}
-                  </h2>
-                  {field.helpText && (
-                    <p className="mt-1 text-sm text-slate-600">{field.helpText}</p>
-                  )}
-                </div>
-              );
-            }
 
             return (
               <div
@@ -565,6 +632,36 @@ export default function RegistrationFormPage({
             );
           })}
 
+          {totalSections > 1 && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={activeSectionIndex === 0}
+                onClick={() => {
+                  setActiveSectionIndex((prev) => Math.max(prev - 1, 0));
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              >
+                Previous section
+              </Button>
+              {activeSectionIndex < totalSections - 1 ? (
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (sectionFields.length && !validateFields(sectionFields)) {
+                      return;
+                    }
+                    setActiveSectionIndex((prev) => Math.min(prev + 1, totalSections - 1));
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  Next section
+                </Button>
+              ) : null}
+            </div>
+          )}
+
           {!allowAnonymous && requiresCollegeEmail && otp.status !== "verified" && (
             <p className="text-xs text-red-500">
               Please verify your college email before submitting.
@@ -582,9 +679,11 @@ export default function RegistrationFormPage({
             </div>
           )}
 
-          <Button type="submit" disabled={submitting} className="w-full">
-            {submitting ? "Submitting..." : "Submit Response"}
-          </Button>
+          {activeSectionIndex === totalSections - 1 ? (
+            <Button type="submit" disabled={submitting} className="w-full">
+              {submitting ? "Submitting..." : "Submit Response"}
+            </Button>
+          ) : null}
         </form>
       </div>
     </div>
