@@ -497,7 +497,7 @@ export default function RegistrationFormPage({
                     <img
                       src={questionImage}
                       alt="Question illustration"
-                      className="h-auto w-full object-contain"
+                      className="h-auto w-full max-h-64 object-contain"
                     />
                   </div>
                 )}
