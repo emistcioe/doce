@@ -125,6 +125,9 @@ export default function RegistrationFormPage({
   const validate = () => {
     const errors: Record<string, string> = {};
     fields.forEach((field) => {
+      if (field.fieldType === "section_break") {
+        return;
+      }
       const value = values[field.id];
       if (field.required) {
         if (field.fieldType === "image") {
@@ -168,10 +171,12 @@ export default function RegistrationFormPage({
           return;
         }
       }
-      const answers = fields.map((field) => ({
-        field: field.id,
-        value: values[field.id],
-      }));
+      const answers = fields
+        .filter((field) => field.fieldType !== "section_break")
+        .map((field) => ({
+          field: field.id,
+          value: values[field.id],
+        }));
 
       const formData = new FormData();
       formData.append("answers", JSON.stringify(answers));
@@ -306,6 +311,22 @@ export default function RegistrationFormPage({
             const options = field.options ?? [];
             const ratingMax = Number(field.config?.max ?? 5);
             const placeholder = field.config?.placeholder ?? "";
+
+            if (field.fieldType === "section_break") {
+              return (
+                <div
+                  key={fieldId}
+                  className="space-y-2 border-t border-gray-200 pt-4"
+                >
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {field.label}
+                  </h2>
+                  {field.helpText && (
+                    <p className="text-sm text-gray-500">{field.helpText}</p>
+                  )}
+                </div>
+              );
+            }
 
             return (
               <div key={fieldId} className="space-y-2">

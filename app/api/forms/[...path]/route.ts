@@ -17,6 +17,31 @@ const resolvePath = (parts: string[]) => {
   return null;
 };
 
+const parseAnswers = (raw: FormDataEntryValue | null) => {
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+const extractFormPayload = (formData: FormData) => {
+  const answersRaw = formData.get("answers");
+  const submitterEmail = formData.get("submitter_email");
+  const otpSession = formData.get("otp_session");
+  const files: Array<[string, File]> = [];
+  formData.forEach((value, key) => {
+    if (key.startsWith("field_") && value instanceof File) {
+      files.push([key, value]);
+    }
+  });
+  return { answersRaw, submitterEmail, otpSession, files };
+};
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: { path: string[] } }
@@ -71,14 +96,59 @@ export async function POST(
     }
 
     const formData = await request.formData();
+    const { answersRaw, submitterEmail, otpSession, files } =
+      extractFormPayload(formData);
 
-    const response = await fetch(
-      `${API_BASE_URL}/api/v1/public/website-mod/forms/${resolved.ownerSlug}/${resolved.formSlug}/submit`,
-      {
-        method: "POST",
-        body: formData,
+    if (!answersRaw) {
+      return NextResponse.json(
+        { error: "Failed to submit form", details: "Missing answers payload." },
+        { status: 400 }
+      );
+    }
+
+    const endpoint = `${API_BASE_URL}/api/v1/public/website-mod/forms/${resolved.ownerSlug}/${resolved.formSlug}/submit`;
+    const hasFiles = files.length > 0;
+
+    if (!hasFiles) {
+      const parsedAnswers = parseAnswers(answersRaw);
+      if (!parsedAnswers) {
+        return NextResponse.json(
+          { error: "Failed to submit form", details: "Invalid answers payload." },
+          { status: 400 }
+        );
       }
-    );
+    }
+
+    const response = hasFiles
+      ? await fetch(endpoint, {
+          method: "POST",
+          body: (() => {
+            const forwardData = new FormData();
+            forwardData.append(
+              "answers",
+              typeof answersRaw === "string"
+                ? answersRaw
+                : JSON.stringify(answersRaw)
+            );
+            if (submitterEmail) {
+              forwardData.append("submitter_email", String(submitterEmail));
+            }
+            if (otpSession) {
+              forwardData.append("otp_session", String(otpSession));
+            }
+            files.forEach(([key, file]) => forwardData.append(key, file));
+            return forwardData;
+          })(),
+        })
+      : await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            answers: parseAnswers(answersRaw),
+            ...(submitterEmail ? { submitter_email: String(submitterEmail) } : {}),
+            ...(otpSession ? { otp_session: String(otpSession) } : {}),
+          }),
+        });
 
     if (!response.ok) {
       const errorText = await response.text();
