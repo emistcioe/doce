@@ -17,6 +17,7 @@ import {
   Calendar,
   Clock,
   Download,
+  FileText,
   Layers,
   Sparkles,
   Users,
@@ -25,6 +26,7 @@ import {
   API_JOURNAL_PUBLIC_PREFIX,
   API_PROJECT_PUBLIC_PREFIX,
   API_RESEARCH_PUBLIC_PREFIX,
+  API_WEBSITE_PUBLIC_PREFIX,
   DEPARTMENT_CODE,
   getPublicApiUrl,
 } from "@/lib/env";
@@ -107,6 +109,7 @@ export default async function HomePage() {
   let researchPayload: any;
   let projectPayload: any;
   let journalPayload: any;
+  let formsPayload: any;
 
   try {
     dept = slug ? await getDepartment(slug) : undefined;
@@ -187,6 +190,19 @@ export default async function HomePage() {
     journalPayload = undefined;
   }
 
+  try {
+    formsPayload =
+      slug && slug.length > 0
+        ? await fetchPublicList(
+            `${API_WEBSITE_PUBLIC_PREFIX}/registration-forms/${slug}`,
+            { limit: "6" }
+          )
+        : undefined;
+  } catch (error) {
+    console.warn("Failed to fetch forms:", error);
+    formsPayload = undefined;
+  }
+
   const events = eventsRes?.results || [];
   const notices = (noticesRes?.results || []).filter((n) => n.isApprovedByDepartment);
   const featuredNotice = notices.find((n) => n.isFeatured && n.thumbnail);
@@ -196,6 +212,10 @@ export default async function HomePage() {
   const researchHighlights = researchPayload?.results ?? [];
   const projectHighlights = projectPayload?.results ?? [];
   const journalHighlights = journalPayload?.results ?? [];
+  const forms = Array.isArray(formsPayload)
+    ? formsPayload
+    : formsPayload?.results ?? [];
+  const featuredForms = forms.slice(0, 6);
   const researchSpotlight = researchHighlights[0];
   const projectSpotlight = projectHighlights[0];
   const journalSpotlight = journalHighlights[0];
@@ -421,6 +441,68 @@ export default async function HomePage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Forms */}
+      <section className="py-16 bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-2xl font-bold flex items-center">
+              <FileText className="h-6 w-6 text-primary mr-2" /> Open Forms
+            </h3>
+            {forms.length > 0 && (
+              <span className="text-sm text-muted-foreground">
+                {forms.length} active
+              </span>
+            )}
+          </div>
+          {forms.length === 0 ? (
+            <div className="p-4 border border-dashed border-border rounded-lg bg-muted/30 text-muted-foreground">
+              No active forms available.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredForms.map((form) => {
+                const ownerName =
+                  form.ownerName ??
+                  form.owner_name ??
+                  dept?.name ??
+                  "Department";
+                return (
+                  <Card
+                    key={form.uuid}
+                    className="hover:shadow-lg transition-shadow bg-card border-border"
+                  >
+                    <CardHeader className="space-y-2">
+                      <CardTitle className="text-lg text-card-foreground">
+                        {form.title}
+                      </CardTitle>
+                      <CardDescription className="text-sm text-muted-foreground line-clamp-3">
+                        {form.description || "Registration form"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                        {ownerName}
+                      </p>
+                    </CardContent>
+                    <CardFooter>
+                      <Button
+                        variant="outline"
+                        className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent"
+                        asChild
+                      >
+                        <Link href={`/forms/${form.slug}`}>
+                          Open Form
+                        </Link>
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
