@@ -63,6 +63,24 @@ const sanitizeHtml = (html: string) => {
   return doc.body.innerHTML;
 };
 
+const resolveFieldType = (field: any) =>
+  String(field?.fieldType ?? field?.field_type ?? "");
+
+const resolveFieldLabel = (field: any) =>
+  String(field?.label ?? field?.field_label ?? "");
+
+const resolveFieldHelpText = (field: any) =>
+  String(field?.helpText ?? field?.help_text ?? "");
+
+const resolveFieldOptions = (field: any) =>
+  Array.isArray(field?.options) ? field.options : [];
+
+const resolveFieldConfig = (field: any) =>
+  (field?.config && typeof field.config === "object" ? field.config : {}) as Record<
+    string,
+    any
+  >;
+
 export default function RegistrationFormPage({
   params,
 }: {
@@ -117,7 +135,7 @@ export default function RegistrationFormPage({
     setValues((prev) => {
       const next = { ...prev };
       form.fields.forEach((field) => {
-        if (field.fieldType === "rating" && next[field.id] === undefined) {
+        if (resolveFieldType(field) === "rating" && next[field.id] === undefined) {
           next[field.id] = 1;
         }
       });
@@ -147,12 +165,13 @@ export default function RegistrationFormPage({
   const validateFields = (targetFields: RegistrationField[], replace = false) => {
     const errors: Record<string, string> = {};
     targetFields.forEach((field) => {
-      if (field.fieldType === "section_break") {
+      const fieldType = resolveFieldType(field);
+      if (fieldType === "section_break") {
         return;
       }
       const value = values[field.id];
       if (field.required) {
-        if (field.fieldType === "image") {
+        if (fieldType === "image") {
           if (!files[field.id]) {
             errors[field.id] = "This field is required.";
           }
@@ -183,15 +202,16 @@ export default function RegistrationFormPage({
     let index = 1;
 
     fields.forEach((field) => {
-      if (field.fieldType === "section_break") {
+      const fieldType = resolveFieldType(field);
+      if (fieldType === "section_break") {
         if (current.fields.length || current.title || current.description) {
           result.push(current);
         }
         index += 1;
         current = {
           id: `section-${index}`,
-          title: field.label,
-          description: field.helpText,
+          title: resolveFieldLabel(field),
+          description: resolveFieldHelpText(field),
           fields: [],
         };
       } else {
@@ -243,7 +263,7 @@ export default function RegistrationFormPage({
         }
       }
       const answers = fields
-        .filter((field) => field.fieldType !== "section_break")
+        .filter((field) => resolveFieldType(field) !== "section_break")
         .map((field) => ({
           field: field.id,
           value: values[field.id],
@@ -257,7 +277,7 @@ export default function RegistrationFormPage({
       }
 
       fields.forEach((field) => {
-        if (field.fieldType === "image") {
+        if (resolveFieldType(field) === "image") {
           const file = files[field.id];
           if (file) {
             formData.append(`field_${field.id}`, file);
@@ -439,10 +459,14 @@ export default function RegistrationFormPage({
             const fieldId = field.id;
             const value = values[fieldId];
             const errorMessage = fieldErrors[fieldId];
-            const options = field.options ?? [];
-            const ratingMax = Number(field.config?.max ?? 5);
-            const placeholder = field.config?.placeholder ?? "";
-            const questionImage = field.config?.question_image as string | undefined;
+            const fieldType = resolveFieldType(field);
+            const label = resolveFieldLabel(field);
+            const helpText = resolveFieldHelpText(field);
+            const options = resolveFieldOptions(field);
+            const config = resolveFieldConfig(field);
+            const ratingMax = Number(config?.max ?? 5);
+            const placeholder = config?.placeholder ?? "";
+            const questionImage = config?.question_image as string | undefined;
 
             return (
               <div
@@ -461,16 +485,16 @@ export default function RegistrationFormPage({
 
                 <div className="space-y-1">
                   <Label className="text-sm font-medium text-slate-900">
-                    {field.label}
+                    {label}
                     {field.required && <span className="text-red-500"> *</span>}
                   </Label>
-                  {field.helpText && (
-                    <p className="text-xs text-slate-500">{field.helpText}</p>
+                  {helpText && (
+                    <p className="text-xs text-slate-500">{helpText}</p>
                   )}
                 </div>
 
                 <div className="mt-3 space-y-3">
-                  {field.fieldType === "short_text" && (
+                  {fieldType === "short_text" && (
                     <Input
                       value={value || ""}
                       placeholder={placeholder}
@@ -478,7 +502,7 @@ export default function RegistrationFormPage({
                     />
                   )}
 
-                  {field.fieldType === "paragraph" && (
+                  {fieldType === "paragraph" && (
                     <Textarea
                       value={value || ""}
                       placeholder={placeholder}
@@ -487,7 +511,7 @@ export default function RegistrationFormPage({
                     />
                   )}
 
-                  {field.fieldType === "number" && (
+                  {fieldType === "number" && (
                     <Input
                       type="number"
                       value={value || ""}
@@ -496,7 +520,7 @@ export default function RegistrationFormPage({
                     />
                   )}
 
-                  {field.fieldType === "email" && (
+                  {fieldType === "email" && (
                     <Input
                       type="email"
                       value={value || ""}
@@ -505,7 +529,7 @@ export default function RegistrationFormPage({
                     />
                   )}
 
-                  {field.fieldType === "phone" && (
+                  {fieldType === "phone" && (
                     <Input
                       type="tel"
                       value={value || ""}
@@ -514,7 +538,7 @@ export default function RegistrationFormPage({
                     />
                   )}
 
-                  {field.fieldType === "date" && (
+                  {fieldType === "date" && (
                     <Input
                       type="date"
                       value={value || ""}
@@ -522,7 +546,7 @@ export default function RegistrationFormPage({
                     />
                   )}
 
-                  {field.fieldType === "time" && (
+                  {fieldType === "time" && (
                     <Input
                       type="time"
                       value={value || ""}
@@ -530,7 +554,7 @@ export default function RegistrationFormPage({
                     />
                   )}
 
-                  {field.fieldType === "select" && (
+                  {fieldType === "select" && (
                     <Select
                       value={value || ""}
                       onValueChange={(val) => handleValueChange(fieldId, val)}
@@ -548,7 +572,7 @@ export default function RegistrationFormPage({
                     </Select>
                   )}
 
-                  {field.fieldType === "radio" && (
+                  {fieldType === "radio" && (
                     <RadioGroup
                       value={value || ""}
                       onValueChange={(val) => handleValueChange(fieldId, val)}
@@ -562,8 +586,8 @@ export default function RegistrationFormPage({
                     </RadioGroup>
                   )}
 
-                  {(field.fieldType === "multi_select" ||
-                    field.fieldType === "checkbox") && (
+                  {(fieldType === "multi_select" ||
+                    fieldType === "checkbox") && (
                     <div className="space-y-2">
                       {options.map((option) => {
                         const checked = Array.isArray(value)
@@ -590,7 +614,7 @@ export default function RegistrationFormPage({
                     </div>
                   )}
 
-                  {field.fieldType === "rating" && (
+                  {fieldType === "rating" && (
                     <div className="space-y-2">
                       <Slider
                         value={[value || 1]}
@@ -605,7 +629,7 @@ export default function RegistrationFormPage({
                     </div>
                   )}
 
-                  {field.fieldType === "image" && (
+                  {fieldType === "image" && (
                     <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3">
                       <Label className="text-xs font-medium text-slate-700">
                         Upload image
