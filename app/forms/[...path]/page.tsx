@@ -46,6 +46,23 @@ const isEmptyValue = (value: any) => {
   return false;
 };
 
+const sanitizeHtml = (html: string) => {
+  if (typeof window === "undefined") return html;
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  doc
+    .querySelectorAll("script, iframe, object, embed")
+    .forEach((el) => el.remove());
+  doc.querySelectorAll("*").forEach((el) => {
+    [...el.attributes].forEach((attr) => {
+      if (attr.name.toLowerCase().startsWith("on")) {
+        el.removeAttribute(attr.name);
+      }
+    });
+  });
+  return doc.body.innerHTML;
+};
+
 export default function RegistrationFormPage({
   params,
 }: {
@@ -113,6 +130,10 @@ export default function RegistrationFormPage({
   const allowAnonymous =
     form?.allowAnonymous ?? (form as any)?.allow_anonymous ?? false;
   const ownerName = form?.ownerName ?? (form as any)?.owner_name ?? "";
+  const descriptionHtml = useMemo(
+    () => (form?.description ? sanitizeHtml(form.description) : ""),
+    [form?.description]
+  );
 
   const handleValueChange = (fieldId: number, value: any) => {
     setValues((prev) => ({ ...prev, [fieldId]: value }));
@@ -186,7 +207,10 @@ export default function RegistrationFormPage({
       }
 
       fields.forEach((field) => {
-        if (field.fieldType === "image") {
+        const allowImage =
+          field.fieldType === "image" ||
+          Boolean(field.config?.allow_image ?? field.config?.allowImage);
+        if (allowImage) {
           const file = files[field.id];
           if (file) {
             formData.append(`field_${field.id}`, file);
@@ -242,24 +266,51 @@ export default function RegistrationFormPage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
-      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-gray-900">{form.title}</h1>
-          {form.description && (
-            <p className="text-sm text-gray-600">{form.description}</p>
-          )}
-          {ownerName && (
-            <p className="text-xs text-gray-500">Owned by {ownerName}</p>
-          )}
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100">
+      <div className="mx-auto max-w-4xl px-4 pb-16 pt-10">
+        <div className="mb-8 rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+                Public Form
+              </span>
+              {ownerName && (
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1">
+                  Owned by {ownerName}
+                </span>
+              )}
+              {requiresCollegeEmail && (
+                <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-blue-700">
+                  College email verification
+                </span>
+              )}
+              {allowAnonymous && (
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+                  Anonymous submissions
+                </span>
+              )}
+            </div>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+              {form.title}
+            </h1>
+            {descriptionHtml && (
+              <div
+                className="text-sm leading-relaxed text-slate-600 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_img]:max-w-full [&_img]:rounded-lg [&_img]:border [&_img]:border-slate-200 [&_a]:text-blue-700 [&_a]:underline"
+                dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+              />
+            )}
+            <p className="text-xs text-slate-500">
+              Fields marked with <span className="font-semibold text-red-500">*</span> are required.
+            </p>
+          </div>
         </div>
 
         {requiresCollegeEmail && (
-          <div className="mt-6 space-y-3 rounded-md border border-blue-100 bg-blue-50 p-4">
-            <Label className="text-sm font-medium text-gray-700">
+          <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
+            <Label className="text-sm font-semibold text-blue-900">
               College Email Verification
             </Label>
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               <Input
                 value={submitterEmail}
                 onChange={(e) => setSubmitterEmail(e.target.value)}
@@ -277,7 +328,7 @@ export default function RegistrationFormPage({
             </div>
 
             {otp.status === "sent" && (
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <Input
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value)}
@@ -295,15 +346,15 @@ export default function RegistrationFormPage({
             )}
 
             {otp.status === "verified" && (
-              <p className="text-sm text-green-600">Email verified successfully.</p>
+              <p className="mt-2 text-sm text-emerald-600">Email verified successfully.</p>
             )}
             {otp.status === "error" && (
-              <p className="text-sm text-red-600">{otp.error}</p>
+              <p className="mt-2 text-sm text-red-600">{otp.error}</p>
             )}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           {fields.map((field) => {
             const fieldId = field.id;
             const value = values[fieldId];
@@ -311,183 +362,199 @@ export default function RegistrationFormPage({
             const options = field.options ?? [];
             const ratingMax = Number(field.config?.max ?? 5);
             const placeholder = field.config?.placeholder ?? "";
+            const allowImageUpload =
+              field.fieldType === "image" ||
+              Boolean(field.config?.allow_image ?? field.config?.allowImage);
 
             if (field.fieldType === "section_break") {
               return (
                 <div
                   key={fieldId}
-                  className="space-y-2 border-t border-gray-200 pt-4"
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
                 >
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-slate-900">
                     {field.label}
                   </h2>
                   {field.helpText && (
-                    <p className="text-sm text-gray-500">{field.helpText}</p>
+                    <p className="mt-1 text-sm text-slate-600">{field.helpText}</p>
                   )}
                 </div>
               );
             }
 
             return (
-              <div key={fieldId} className="space-y-2">
-                <Label className="text-sm font-medium">
-                  {field.label}
-                  {field.required && <span className="text-red-500"> *</span>}
-                </Label>
-                {field.helpText && (
-                  <p className="text-xs text-gray-500">{field.helpText}</p>
-                )}
+              <div
+                key={fieldId}
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium text-slate-900">
+                    {field.label}
+                    {field.required && <span className="text-red-500"> *</span>}
+                  </Label>
+                  {field.helpText && (
+                    <p className="text-xs text-slate-500">{field.helpText}</p>
+                  )}
+                </div>
 
-                {field.fieldType === "short_text" && (
-                  <Input
-                    value={value || ""}
-                    placeholder={placeholder}
-                    onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                  />
-                )}
-
-                {field.fieldType === "paragraph" && (
-                  <Textarea
-                    value={value || ""}
-                    placeholder={placeholder}
-                    rows={4}
-                    onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                  />
-                )}
-
-                {field.fieldType === "number" && (
-                  <Input
-                    type="number"
-                    value={value || ""}
-                    placeholder={placeholder}
-                    onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                  />
-                )}
-
-                {field.fieldType === "email" && (
-                  <Input
-                    type="email"
-                    value={value || ""}
-                    placeholder={placeholder}
-                    onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                  />
-                )}
-
-                {field.fieldType === "phone" && (
-                  <Input
-                    type="tel"
-                    value={value || ""}
-                    placeholder={placeholder}
-                    onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                  />
-                )}
-
-                {field.fieldType === "date" && (
-                  <Input
-                    type="date"
-                    value={value || ""}
-                    onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                  />
-                )}
-
-                {field.fieldType === "time" && (
-                  <Input
-                    type="time"
-                    value={value || ""}
-                    onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                  />
-                )}
-
-                {field.fieldType === "select" && (
-                  <Select
-                    value={value || ""}
-                    onValueChange={(val) => handleValueChange(fieldId, val)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select an option" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {options.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-
-                {field.fieldType === "radio" && (
-                  <RadioGroup
-                    value={value || ""}
-                    onValueChange={(val) => handleValueChange(fieldId, val)}
-                  >
-                    {options.map((option) => (
-                      <div key={option} className="flex items-center space-x-2">
-                        <RadioGroupItem value={option} id={`${fieldId}-${option}`} />
-                        <Label htmlFor={`${fieldId}-${option}`}>{option}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                )}
-
-                {(field.fieldType === "multi_select" ||
-                  field.fieldType === "checkbox") && (
-                  <div className="space-y-2">
-                    {options.map((option) => {
-                      const checked = Array.isArray(value)
-                        ? value.includes(option)
-                        : false;
-                      return (
-                        <div key={option} className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(checkedValue) => {
-                              let next = Array.isArray(value) ? [...value] : [];
-                              if (checkedValue) {
-                                next.push(option);
-                              } else {
-                                next = next.filter((item) => item !== option);
-                              }
-                              handleValueChange(fieldId, next);
-                            }}
-                          />
-                          <Label>{option}</Label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {field.fieldType === "rating" && (
-                  <div className="space-y-2">
-                    <Slider
-                      value={[value || 1]}
-                      min={1}
-                      max={ratingMax}
-                      step={1}
-                      onValueChange={(val) => handleValueChange(fieldId, val[0])}
+                <div className="mt-3 space-y-3">
+                  {field.fieldType === "short_text" && (
+                    <Input
+                      value={value || ""}
+                      placeholder={placeholder}
+                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
                     />
-                    <p className="text-xs text-gray-500">
-                      Rating: {value || 1} / {ratingMax}
-                    </p>
-                  </div>
-                )}
+                  )}
 
-                {field.fieldType === "image" && (
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) =>
-                      handleFileChange(
-                        fieldId,
-                        e.target.files?.[0] || null
-                      )
-                    }
-                  />
-                )}
+                  {field.fieldType === "paragraph" && (
+                    <Textarea
+                      value={value || ""}
+                      placeholder={placeholder}
+                      rows={4}
+                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
+                    />
+                  )}
+
+                  {field.fieldType === "number" && (
+                    <Input
+                      type="number"
+                      value={value || ""}
+                      placeholder={placeholder}
+                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
+                    />
+                  )}
+
+                  {field.fieldType === "email" && (
+                    <Input
+                      type="email"
+                      value={value || ""}
+                      placeholder={placeholder}
+                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
+                    />
+                  )}
+
+                  {field.fieldType === "phone" && (
+                    <Input
+                      type="tel"
+                      value={value || ""}
+                      placeholder={placeholder}
+                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
+                    />
+                  )}
+
+                  {field.fieldType === "date" && (
+                    <Input
+                      type="date"
+                      value={value || ""}
+                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
+                    />
+                  )}
+
+                  {field.fieldType === "time" && (
+                    <Input
+                      type="time"
+                      value={value || ""}
+                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
+                    />
+                  )}
+
+                  {field.fieldType === "select" && (
+                    <Select
+                      value={value || ""}
+                      onValueChange={(val) => handleValueChange(fieldId, val)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an option" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {options.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  {field.fieldType === "radio" && (
+                    <RadioGroup
+                      value={value || ""}
+                      onValueChange={(val) => handleValueChange(fieldId, val)}
+                    >
+                      {options.map((option) => (
+                        <div key={option} className="flex items-center space-x-2">
+                          <RadioGroupItem value={option} id={`${fieldId}-${option}`} />
+                          <Label htmlFor={`${fieldId}-${option}`}>{option}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  )}
+
+                  {(field.fieldType === "multi_select" ||
+                    field.fieldType === "checkbox") && (
+                    <div className="space-y-2">
+                      {options.map((option) => {
+                        const checked = Array.isArray(value)
+                          ? value.includes(option)
+                          : false;
+                        return (
+                          <div key={option} className="flex items-center space-x-2">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(checkedValue) => {
+                                let next = Array.isArray(value) ? [...value] : [];
+                                if (checkedValue) {
+                                  next.push(option);
+                                } else {
+                                  next = next.filter((item) => item !== option);
+                                }
+                                handleValueChange(fieldId, next);
+                              }}
+                            />
+                            <Label>{option}</Label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {field.fieldType === "rating" && (
+                    <div className="space-y-2">
+                      <Slider
+                        value={[value || 1]}
+                        min={1}
+                        max={ratingMax}
+                        step={1}
+                        onValueChange={(val) => handleValueChange(fieldId, val[0])}
+                      />
+                      <p className="text-xs text-slate-500">
+                        Rating: {value || 1} / {ratingMax}
+                      </p>
+                    </div>
+                  )}
+
+                  {allowImageUpload && (
+                    <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3">
+                      <Label className="text-xs font-medium text-slate-700">
+                        {field.fieldType === "image" ? "Upload image" : "Upload image (optional)"}
+                      </Label>
+                      <Input
+                        className="mt-2"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) =>
+                          handleFileChange(
+                            fieldId,
+                            e.target.files?.[0] || null
+                          )
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
 
                 {errorMessage && (
-                  <p className="text-xs text-red-500">{errorMessage}</p>
+                  <p className="mt-3 text-xs text-red-500">{errorMessage}</p>
                 )}
               </div>
             );
@@ -499,8 +566,16 @@ export default function RegistrationFormPage({
             </p>
           )}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {success && <p className="text-sm text-green-600">{success}</p>}
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+              {success}
+            </div>
+          )}
 
           <Button type="submit" disabled={submitting} className="w-full">
             {submitting ? "Submitting..." : "Submit Response"}
