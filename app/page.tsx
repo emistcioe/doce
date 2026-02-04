@@ -194,7 +194,7 @@ export default async function HomePage() {
     formsPayload =
       slug && slug.length > 0
         ? await fetchPublicList(
-            `${API_WEBSITE_PUBLIC_PREFIX}/registration-forms/${slug}`,
+            `${API_WEBSITE_PUBLIC_PREFIX}/forms/${slug}`,
             { limit: "6" }
           )
         : undefined;

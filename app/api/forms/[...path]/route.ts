@@ -5,15 +5,31 @@ import { departmentSlugFromCode } from "@/lib/department";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://cdn.tcioe.edu.np";
 
-const ownerSlug = departmentSlugFromCode(DEPARTMENT_CODE) || DEPARTMENT_CODE;
+const defaultOwnerSlug = departmentSlugFromCode(DEPARTMENT_CODE) || DEPARTMENT_CODE;
+
+const resolvePath = (parts: string[]) => {
+  if (parts.length === 1) {
+    return { ownerSlug: defaultOwnerSlug, formSlug: parts[0] };
+  }
+  if (parts.length === 2) {
+    return { ownerSlug: parts[0], formSlug: parts[1] };
+  }
+  return null;
+};
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: { path: string[] } }
 ) {
   try {
+    const parts = params?.path ?? [];
+    const resolved = resolvePath(parts);
+    if (!resolved) {
+      return NextResponse.json({ error: "Invalid form path" }, { status: 404 });
+    }
+
     const response = await fetch(
-      `${API_BASE_URL}/api/v1/public/website-mod/registration-forms/${ownerSlug}/${params.slug}`,
+      `${API_BASE_URL}/api/v1/public/website-mod/forms/${resolved.ownerSlug}/${resolved.formSlug}`,
       { cache: "no-store" }
     );
 
@@ -45,13 +61,19 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: { path: string[] } }
 ) {
   try {
+    const parts = params?.path ?? [];
+    const resolved = resolvePath(parts);
+    if (!resolved) {
+      return NextResponse.json({ error: "Invalid form path" }, { status: 404 });
+    }
+
     const formData = await request.formData();
 
     const response = await fetch(
-      `${API_BASE_URL}/api/v1/public/website-mod/registration-forms/${ownerSlug}/${params.slug}/submit`,
+      `${API_BASE_URL}/api/v1/public/website-mod/forms/${resolved.ownerSlug}/${resolved.formSlug}/submit`,
       {
         method: "POST",
         body: formData,

@@ -14,10 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@/components/ui/radio-group";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 
 interface RegistrationField {
@@ -52,7 +49,7 @@ const isEmptyValue = (value: any) => {
 export default function RegistrationFormPage({
   params,
 }: {
-  params: { owner: string; slug: string };
+  params: { path: string[] };
 }) {
   const [form, setForm] = useState<RegistrationForm | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -66,13 +63,22 @@ export default function RegistrationFormPage({
   const [otpCode, setOtpCode] = useState<string>("");
   const otp = useSubmissionOtp("form_submission");
 
+  const pathParts = params?.path ?? [];
+  const hasOwner = pathParts.length === 2;
+  const ownerSlug = hasOwner ? pathParts[0] : undefined;
+  const formSlug = hasOwner ? pathParts[1] : pathParts[0];
+
   useEffect(() => {
     const fetchForm = async () => {
+      if (!formSlug) {
+        setError("Invalid form URL");
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
-        const response = await fetch(
-          `/api/registration-forms/${params.owner}/${params.slug}`
-        );
+        const apiPath = ownerSlug ? `/api/forms/${ownerSlug}/${formSlug}` : `/api/forms/${formSlug}`;
+        const response = await fetch(apiPath);
         if (!response.ok) {
           throw new Error("Failed to load form");
         }
@@ -86,7 +92,7 @@ export default function RegistrationFormPage({
     };
 
     fetchForm();
-  }, [params.owner, params.slug]);
+  }, [formSlug, ownerSlug]);
 
   useEffect(() => {
     if (!form) return;
@@ -106,8 +112,7 @@ export default function RegistrationFormPage({
     form?.requireCollegeEmail ?? (form as any)?.require_college_email ?? false;
   const allowAnonymous =
     form?.allowAnonymous ?? (form as any)?.allow_anonymous ?? false;
-  const ownerName =
-    form?.ownerName ?? (form as any)?.owner_name ?? "";
+  const ownerName = form?.ownerName ?? (form as any)?.owner_name ?? "";
 
   const handleValueChange = (fieldId: number, value: any) => {
     setValues((prev) => ({ ...prev, [fieldId]: value }));
@@ -139,6 +144,11 @@ export default function RegistrationFormPage({
     event.preventDefault();
     setError(null);
     setSuccess(null);
+
+    if (!formSlug) {
+      setError("Invalid form URL");
+      return;
+    }
 
     if (!validate()) {
       return;
@@ -179,13 +189,11 @@ export default function RegistrationFormPage({
         }
       });
 
-      const response = await fetch(
-        `/api/registration-forms/${params.owner}/${params.slug}`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const apiPath = ownerSlug ? `/api/forms/${ownerSlug}/${formSlug}` : `/api/forms/${formSlug}`;
+      const response = await fetch(apiPath, {
+        method: "POST",
+        body: formData,
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -209,95 +217,84 @@ export default function RegistrationFormPage({
   };
 
   if (loading) {
-    return <div className="p-8 text-center">Loading form...</div>;
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-10">
+        <p className="text-center text-gray-500">Loading form...</p>
+      </div>
+    );
   }
 
-  if (error) {
-    return <div className="p-8 text-center text-red-600">{error}</div>;
+  if (error && !form) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-10">
+        <p className="text-center text-red-600">{error}</p>
+      </div>
+    );
   }
 
   if (!form) {
-    return <div className="p-8 text-center">Form not found.</div>;
+    return null;
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-10">
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="mx-auto max-w-3xl px-4 py-10">
+      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <div className="space-y-2">
-          <p className="text-sm text-gray-500">{ownerName}</p>
-          <h1 className="text-2xl font-semibold">{form.title}</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{form.title}</h1>
           {form.description && (
             <p className="text-sm text-gray-600">{form.description}</p>
           )}
-          {allowAnonymous && (
-            <p className="text-xs text-gray-500">
-              Anonymous mode: submitter metadata is not stored.
-            </p>
+          {ownerName && (
+            <p className="text-xs text-gray-500">Owned by {ownerName}</p>
           )}
         </div>
 
         {requiresCollegeEmail && (
-          <div className="mt-6 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 space-y-3">
-            <p className="text-sm font-medium text-gray-700">
-              College email verification required
-            </p>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">College Email</Label>
+          <div className="mt-6 space-y-3 rounded-md border border-blue-100 bg-blue-50 p-4">
+            <Label className="text-sm font-medium text-gray-700">
+              College Email Verification
+            </Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Input
-                type="email"
                 value={submitterEmail}
+                onChange={(e) => setSubmitterEmail(e.target.value)}
                 placeholder="name@tcioe.edu.np"
-                onChange={(e) => {
-                  setSubmitterEmail(e.target.value);
-                  if (otp.status !== "idle") {
-                    otp.reset();
-                    setOtpCode("");
-                  }
-                }}
+                type="email"
               />
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!submitterEmail || otp.status === "sending"}
+                onClick={() => otp.send(submitterEmail)}
+              >
+                {otp.status === "sending" ? "Sending..." : "Send OTP"}
+              </Button>
+            </div>
+
+            {otp.status === "sent" && (
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      await otp.requestOtp({ email: submitterEmail.trim() });
-                    } catch (err) {
-                      // error handled in hook
-                    }
-                  }}
-                  disabled={otp.loading || !submitterEmail}
-                >
-                  {otp.loading ? "Sending..." : "Send code"}
-                </Button>
                 <Input
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value)}
                   placeholder="Enter OTP"
-                  className="sm:max-w-[200px]"
                 />
                 <Button
                   type="button"
-                  onClick={async () => {
-                    try {
-                      await otp.verifyOtp({
-                        email: submitterEmail.trim(),
-                        code: otpCode.trim(),
-                      });
-                    } catch (err) {
-                      // error handled in hook
-                    }
-                  }}
-                  disabled={otp.verifying || otp.status !== "sent" || otpCode.length < 6}
+                  variant="secondary"
+                  disabled={!otpCode || otp.status === "verifying"}
+                  onClick={() => otp.verify(otpCode)}
                 >
-                  {otp.verifying ? "Verifying..." : "Verify"}
+                  {otp.status === "verifying" ? "Verifying..." : "Verify"}
                 </Button>
               </div>
-              {otp.status === "verified" && (
-                <p className="text-xs text-green-600">Email verified</p>
-              )}
-              {otp.error && <p className="text-xs text-red-600">{otp.error}</p>}
-            </div>
+            )}
+
+            {otp.status === "verified" && (
+              <p className="text-sm text-green-600">Email verified successfully.</p>
+            )}
+            {otp.status === "error" && (
+              <p className="text-sm text-red-600">{otp.error}</p>
+            )}
           </div>
         )}
 
@@ -423,17 +420,14 @@ export default function RegistrationFormPage({
                         <div key={option} className="flex items-center space-x-2">
                           <Checkbox
                             checked={checked}
-                            onCheckedChange={(checkedState) => {
-                              const current = Array.isArray(value) ? value : [];
-                              const isChecked = checkedState === true;
-                              if (isChecked) {
-                                handleValueChange(fieldId, [...current, option]);
+                            onCheckedChange={(checkedValue) => {
+                              let next = Array.isArray(value) ? [...value] : [];
+                              if (checkedValue) {
+                                next.push(option);
                               } else {
-                                handleValueChange(
-                                  fieldId,
-                                  current.filter((item: string) => item !== option)
-                                );
+                                next = next.filter((item) => item !== option);
                               }
+                              handleValueChange(fieldId, next);
                             }}
                           />
                           <Label>{option}</Label>
@@ -446,10 +440,10 @@ export default function RegistrationFormPage({
                 {field.fieldType === "rating" && (
                   <div className="space-y-2">
                     <Slider
+                      value={[value || 1]}
                       min={1}
                       max={ratingMax}
                       step={1}
-                      value={[Number(value) || 1]}
                       onValueChange={(val) => handleValueChange(fieldId, val[0])}
                     />
                     <p className="text-xs text-gray-500">
@@ -463,31 +457,33 @@ export default function RegistrationFormPage({
                     type="file"
                     accept="image/*"
                     onChange={(e) =>
-                      handleFileChange(fieldId, e.target.files?.[0] || null)
+                      handleFileChange(
+                        fieldId,
+                        e.target.files?.[0] || null
+                      )
                     }
                   />
                 )}
 
                 {errorMessage && (
-                  <p className="text-xs text-red-600">{errorMessage}</p>
+                  <p className="text-xs text-red-500">{errorMessage}</p>
                 )}
               </div>
             );
           })}
 
+          {!allowAnonymous && requiresCollegeEmail && otp.status !== "verified" && (
+            <p className="text-xs text-red-500">
+              Please verify your college email before submitting.
+            </p>
+          )}
+
           {error && <p className="text-sm text-red-600">{error}</p>}
           {success && <p className="text-sm text-green-600">{success}</p>}
 
-          <div className="pt-2">
-          <Button
-            type="submit"
-            disabled={
-              submitting || (requiresCollegeEmail && otp.status !== "verified")
-            }
-          >
-            {submitting ? "Submitting..." : "Submit"}
+          <Button type="submit" disabled={submitting} className="w-full">
+            {submitting ? "Submitting..." : "Submit Response"}
           </Button>
-          </div>
         </form>
       </div>
     </div>
