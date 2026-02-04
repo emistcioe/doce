@@ -116,6 +116,7 @@ export default function RegistrationFormPage({
   const [submitterEmail, setSubmitterEmail] = useState<string>("");
   const [otpCode, setOtpCode] = useState<string>("");
   const [activeSectionIndex, setActiveSectionIndex] = useState<number>(0);
+  const [filePreviews, setFilePreviews] = useState<Record<string, string>>({});
   const otp = useSubmissionOtp("form_submission");
 
   const pathParts = params?.path ?? [];
@@ -179,6 +180,19 @@ export default function RegistrationFormPage({
 
   const handleFileChange = (fieldId: number, file: File | null) => {
     setFiles((prev) => ({ ...prev, [fieldId]: file }));
+    setFilePreviews((prev) => {
+      const key = String(fieldId);
+      const existing = prev[key];
+      if (existing) {
+        URL.revokeObjectURL(existing);
+      }
+      if (!file) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: URL.createObjectURL(file) };
+    });
   };
 
   const validateFields = (targetFields: RegistrationField[], replace = false) => {
@@ -247,6 +261,10 @@ export default function RegistrationFormPage({
 
   useEffect(() => {
     setActiveSectionIndex(0);
+    setFilePreviews((prev) => {
+      Object.values(prev).forEach((url) => URL.revokeObjectURL(url));
+      return {};
+    });
   }, [form?.uuid]);
 
   const totalSections = sections.length;
@@ -653,6 +671,15 @@ export default function RegistrationFormPage({
                       <Label className="text-xs font-medium text-slate-700">
                         Upload image
                       </Label>
+                      {filePreviews[fieldId] && (
+                        <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                          <img
+                            src={filePreviews[fieldId]}
+                            alt="Selected upload"
+                            className="h-40 w-full object-contain"
+                          />
+                        </div>
+                      )}
                       <Input
                         className="mt-2"
                         type="file"
@@ -664,6 +691,18 @@ export default function RegistrationFormPage({
                           )
                         }
                       />
+                      {files[fieldId] && (
+                        <div className="mt-2 flex items-center justify-between text-xs text-slate-600">
+                          <span>{files[fieldId]?.name}</span>
+                          <button
+                            type="button"
+                            className="text-red-500 hover:underline"
+                            onClick={() => handleFileChange(fieldId, null)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

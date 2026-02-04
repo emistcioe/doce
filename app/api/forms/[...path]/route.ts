@@ -98,19 +98,14 @@ export async function POST(
     const formData = await request.formData();
     const { answersRaw, submitterEmail, otpSession, files } =
       extractFormPayload(formData);
-
-    if (!answersRaw) {
-      return NextResponse.json(
-        { error: "Failed to submit form", details: "Missing answers payload." },
-        { status: 400 }
-      );
-    }
+    const normalizedAnswersRaw =
+      answersRaw === null || answersRaw === "null" ? "[]" : answersRaw;
 
     const endpoint = `${API_BASE_URL}/api/v1/public/website-mod/forms/${resolved.ownerSlug}/${resolved.formSlug}/submit`;
     const hasFiles = files.length > 0;
 
     if (!hasFiles) {
-      const parsedAnswers = parseAnswers(answersRaw);
+      const parsedAnswers = parseAnswers(normalizedAnswersRaw);
       if (!parsedAnswers) {
         return NextResponse.json(
           { error: "Failed to submit form", details: "Invalid answers payload." },
@@ -126,9 +121,9 @@ export async function POST(
             const forwardData = new FormData();
             forwardData.append(
               "answers",
-              typeof answersRaw === "string"
-                ? answersRaw
-                : JSON.stringify(answersRaw)
+              typeof normalizedAnswersRaw === "string"
+                ? normalizedAnswersRaw
+                : JSON.stringify(normalizedAnswersRaw)
             );
             if (submitterEmail) {
               forwardData.append("submitter_email", String(submitterEmail));
@@ -144,7 +139,7 @@ export async function POST(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            answers: parseAnswers(answersRaw),
+            answers: parseAnswers(normalizedAnswersRaw),
             ...(submitterEmail ? { submitter_email: String(submitterEmail) } : {}),
             ...(otpSession ? { otp_session: String(otpSession) } : {}),
           }),
