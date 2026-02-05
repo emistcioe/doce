@@ -401,8 +401,34 @@ export default function RegistrationFormPage({
 
   if (error && !form) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-10">
-        <p className="text-center text-red-600">{error}</p>
+      <div className="flex min-h-[60vh] items-center justify-center px-4 py-12">
+        <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="mt-1 flex size-11 items-center justify-center rounded-full bg-red-50 text-red-600">
+              <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M12 2.75c-5.108 0-9.25 4.142-9.25 9.25s4.142 9.25 9.25 9.25 9.25-4.142 9.25-9.25-4.142-9.25-9.25-9.25zm0 4.5a.9.9 0 01.9.9v4.6a.9.9 0 11-1.8 0v-4.6a.9.9 0 01.9-.9zm0 9.3a1.1 1.1 0 110-2.2 1.1 1.1 0 010 2.2z"
+                />
+              </svg>
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-slate-900">Form not found</h2>
+              <p className="text-sm text-slate-600">{error}</p>
+              <p className="text-xs text-slate-500">
+                Please check the link or contact the department for a valid form URL.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button type="button" onClick={() => window.location.assign("/")}>
+                  Go to homepage
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => window.location.reload()}>
+                  Try again
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
