@@ -188,6 +188,8 @@ export default function RegistrationFormPage({
     form?.requireCollegeEmail ?? (form as any)?.require_college_email ?? false;
   const allowAnonymous =
     form?.allowAnonymous ?? (form as any)?.allow_anonymous ?? false;
+  const isEmailVerified = otp.status === "verified";
+  const canAccessForm = !requiresCollegeEmail || isEmailVerified;
   const ownerName = form?.ownerName ?? (form as any)?.owner_name ?? "";
   const descriptionHtml = useMemo(
     () => (form?.description ? sanitizeHtml(form.description) : ""),
@@ -440,6 +442,61 @@ export default function RegistrationFormPage({
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100">
       <div className="mx-auto max-w-4xl px-4 pb-16 pt-10">
+
+        {requiresCollegeEmail && (
+          <div className="mb-8 rounded-2xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
+            <div className="flex flex-col gap-1">
+              <Label className="text-sm font-semibold text-blue-900">
+                College Email Verification
+              </Label>
+              <p className="text-xs text-blue-700">
+                Please verify your college email before accessing the form.
+              </p>
+            </div>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={submitterEmail}
+                onChange={(e) => setSubmitterEmail(e.target.value)}
+                placeholder="name@tcioe.edu.np"
+                type="email"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!submitterEmail || otp.status === "sending"}
+                onClick={() => otp.send(submitterEmail)}
+              >
+                {otp.status === "sending" ? "Sending..." : "Send OTP"}
+              </Button>
+            </div>
+
+            {otp.status === "sent" && (
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Input
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  placeholder="Enter OTP"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!otpCode || otp.status === "verifying"}
+                  onClick={() => otp.verify(otpCode)}
+                >
+                  {otp.status === "verifying" ? "Verifying..." : "Verify"}
+                </Button>
+              </div>
+            )}
+
+            {otp.status === "verified" && (
+              <p className="mt-2 text-sm text-emerald-600">Email verified successfully.</p>
+            )}
+            {otp.status === "error" && (
+              <p className="mt-2 text-sm text-red-600">{otp.error}</p>
+            )}
+          </div>
+        )}
+
         <div className="mb-8 rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur">
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
@@ -485,59 +542,27 @@ export default function RegistrationFormPage({
           </div>
         </div>
 
-        {requiresCollegeEmail && (
-          <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
-            <Label className="text-sm font-semibold text-blue-900">
-              College Email Verification
-            </Label>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={submitterEmail}
-                onChange={(e) => setSubmitterEmail(e.target.value)}
-                placeholder="name@tcioe.edu.np"
-                type="email"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={!submitterEmail || otp.status === "sending"}
-                onClick={() => otp.send(submitterEmail)}
-              >
-                {otp.status === "sending" ? "Sending..." : "Send OTP"}
-              </Button>
-            </div>
 
-            {otp.status === "sent" && (
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <Input
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  placeholder="Enter OTP"
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={!otpCode || otp.status === "verifying"}
-                  onClick={() => otp.verify(otpCode)}
-                >
-                  {otp.status === "verifying" ? "Verifying..." : "Verify"}
-                </Button>
+        <div className="relative">
+          {!canAccessForm && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl border border-slate-200 bg-white/80 px-6 text-center backdrop-blur-sm">
+              <div className="max-w-md space-y-1">
+                <p className="text-sm font-semibold text-slate-900">
+                  Verify your college email to access this form.
+                </p>
+                <p className="text-xs text-slate-600">
+                  Complete the verification step above to unlock the questions.
+                </p>
               </div>
-            )}
+            </div>
+          )}
 
-            {otp.status === "verified" && (
-              <p className="mt-2 text-sm text-emerald-600">Email verified successfully.</p>
-            )}
-            {otp.status === "error" && (
-              <p className="mt-2 text-sm text-red-600">{otp.error}</p>
-            )}
-          </div>
-        )}
-
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-        >
+          <form
+            onSubmit={handleSubmit}
+            className={`space-y-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ${
+              canAccessForm ? "" : "pointer-events-none select-none opacity-60"
+            }`}
+          >
           {(totalSections > 1 || currentSection?.title || currentSection?.description) && (
             <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
               {totalSections > 1 && (
@@ -884,6 +909,7 @@ export default function RegistrationFormPage({
             </Button>
           ) : null}
         </form>
+        </div>
       </div>
     </div>
   );
