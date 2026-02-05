@@ -91,7 +91,7 @@ export default function ClubGalleryPage({ params }: ClubGalleryPageProps) {
       <div className="max-w-6xl mx-auto px-6 py-10 space-y-6">
         <div className="flex items-center justify-between">
           <Link
-            href={`/campus-life/clubs/${resolvedParams.id}`}
+            href={`/clubs/${resolvedParams.id}`}
             className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Club

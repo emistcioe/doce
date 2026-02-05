@@ -19,7 +19,6 @@ import { useClub, generateClubSubdomain } from "@/hooks/use-clubs";
 import {
   useEvents,
   formatEventDate,
-  generateEventSlug,
   isUpcomingEvent,
   isPastEvent,
 } from "@/hooks/use-events";
@@ -149,7 +148,7 @@ export default function ClubDetailPage({ params }: ClubDetailPageProps) {
             Try Again
           </button>
           <Link
-            href="/campus-life/clubs"
+            href="/clubs"
             className="text-slate-900 hover:text-slate-700"
           >
             Back to Clubs
@@ -165,7 +164,7 @@ export default function ClubDetailPage({ params }: ClubDetailPageProps) {
         <div className="max-w-4xl mx-auto text-center">
           <div className="text-gray-600 text-lg mb-4">Club not found</div>
           <Link
-            href="/campus-life/clubs"
+            href="/clubs"
             className="bg-slate-900 text-white px-6 py-2 rounded-full hover:bg-slate-800"
           >
             Back to Clubs
@@ -196,7 +195,7 @@ export default function ClubDetailPage({ params }: ClubDetailPageProps) {
           <div className="max-w-6xl mx-auto h-full px-6 py-8 flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <Link
-                href="/campus-life/clubs"
+                href="/clubs"
                 className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-semibold text-white backdrop-blur"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -284,11 +283,11 @@ export default function ClubDetailPage({ params }: ClubDetailPageProps) {
             <h2 className="text-lg font-semibold text-slate-900">Quick Links</h2>
             <div className="mt-4 space-y-3">
               {[
-                { label: "Documents", href: `/campus-life/clubs/${clubId}/documents`, icon: FileText },
-                { label: "Events", href: `/campus-life/clubs/${clubId}/events`, icon: Calendar },
-                { label: "Members", href: `/campus-life/clubs/${clubId}/members`, icon: Users },
-                { label: "Alumni", href: `/campus-life/clubs/${clubId}/alumni`, icon: GraduationCap },
-                { label: "Gallery", href: `/campus-life/clubs/${clubId}/gallery`, icon: ImageIcon },
+                { label: "Documents", href: `/clubs/${clubId}/documents`, icon: FileText },
+                { label: "Events", href: `/clubs/${clubId}/events`, icon: Calendar },
+                { label: "Members", href: `/clubs/${clubId}/members`, icon: Users },
+                { label: "Alumni", href: `/clubs/${clubId}/alumni`, icon: GraduationCap },
+                { label: "Gallery", href: `/clubs/${clubId}/gallery`, icon: ImageIcon },
               ].map((item) => (
                 <Link
                   key={item.label}
@@ -311,7 +310,7 @@ export default function ClubDetailPage({ params }: ClubDetailPageProps) {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900">Upcoming Events</h2>
               <Link
-                href={`/campus-life/clubs/${clubId}/events`}
+                href={`/clubs/${clubId}/events`}
                 className="text-xs font-semibold text-slate-500 hover:text-slate-700"
               >
                 View all
@@ -324,7 +323,7 @@ export default function ClubDetailPage({ params }: ClubDetailPageProps) {
               {upcomingEvents.map((event) => (
                 <Link
                   key={event.uuid}
-                  href={`/campus-life/club-events/${generateEventSlug(event.title)}`}
+                  href={`/events/${event.uuid}`}
                   className="block rounded-xl border border-slate-200 p-4 hover:border-slate-300"
                 >
                   <p className="text-sm font-semibold text-slate-900">{event.title}</p>
@@ -339,7 +338,7 @@ export default function ClubDetailPage({ params }: ClubDetailPageProps) {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900">Past Events</h2>
               <Link
-                href={`/campus-life/clubs/${clubId}/events`}
+                href={`/clubs/${clubId}/events`}
                 className="text-xs font-semibold text-slate-500 hover:text-slate-700"
               >
                 View all
@@ -352,7 +351,7 @@ export default function ClubDetailPage({ params }: ClubDetailPageProps) {
               {pastEvents.map((event) => (
                 <Link
                   key={event.uuid}
-                  href={`/campus-life/club-events/${generateEventSlug(event.title)}`}
+                  href={`/events/${event.uuid}`}
                   className="block rounded-xl border border-slate-200 p-4 hover:border-slate-300"
                 >
                   <p className="text-sm font-semibold text-slate-900">{event.title}</p>
@@ -369,7 +368,7 @@ export default function ClubDetailPage({ params }: ClubDetailPageProps) {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">Members</h2>
             <Link
-              href={`/campus-life/clubs/${clubId}/members`}
+              href={`/clubs/${clubId}/members`}
               className="text-xs font-semibold text-slate-500 hover:text-slate-700"
             >
               View all
@@ -408,7 +407,7 @@ export default function ClubDetailPage({ params }: ClubDetailPageProps) {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">Gallery</h2>
             <Link
-              href={`/campus-life/clubs/${clubId}/gallery`}
+              href={`/clubs/${clubId}/gallery`}
               className="text-xs font-semibold text-slate-500 hover:text-slate-700"
             >
               View all
@@ -440,7 +439,7 @@ export default function ClubDetailPage({ params }: ClubDetailPageProps) {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900">Alumni</h2>
               <Link
-                href={`/campus-life/clubs/${clubId}/alumni`}
+                href={`/clubs/${clubId}/alumni`}
                 className="text-xs font-semibold text-slate-500 hover:text-slate-700"
               >
                 View all

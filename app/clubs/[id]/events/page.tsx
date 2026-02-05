@@ -8,7 +8,6 @@ import { useClub } from "@/hooks/use-clubs";
 import {
   useEvents,
   formatEventDate,
-  generateEventSlug,
   isUpcomingEvent,
   isPastEvent,
 } from "@/hooks/use-events";
@@ -59,7 +58,7 @@ export default function ClubEventsPage({ params }: ClubEventsPageProps) {
   const renderEventCard = (event: any) => (
     <Link
       key={event.uuid}
-      href={`/campus-life/club-events/${generateEventSlug(event.title)}`}
+      href={`/events/${event.uuid}`}
       className="block rounded-2xl border border-slate-200 bg-white p-4 hover:border-slate-300"
     >
       <div className="flex items-center gap-4">
@@ -83,7 +82,7 @@ export default function ClubEventsPage({ params }: ClubEventsPageProps) {
       <div className="max-w-5xl mx-auto px-6 py-10 space-y-6">
         <div className="flex items-center justify-between">
           <Link
-            href={`/campus-life/clubs/${resolvedParams.id}`}
+            href={`/clubs/${resolvedParams.id}`}
             className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Club
