@@ -385,7 +385,7 @@ export default function RegistrationFormPage({
       setValues({});
       setFiles({});
       setFieldErrors({});
-      if (requiresCollegeEmail) {
+      if (!requiresCollegeEmail) {
         setSubmitterEmail("");
         setOtpCode("");
         otp.reset();
