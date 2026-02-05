@@ -100,6 +100,25 @@ const resolveQuestionImage = (field: any) => {
   return raw;
 };
 
+const resolveFormLoadError = async (response: Response) => {
+  if (response.status === 404) {
+    return "This form doesn't exist or is no longer available.";
+  }
+  if (response.status === 400) {
+    return "Invalid form link.";
+  }
+  const text = await response.text();
+  if (text) {
+    try {
+      const data = JSON.parse(text);
+      return data?.error || data?.detail || data?.message || "Failed to load form";
+    } catch {
+      return text;
+    }
+  }
+  return "Failed to load form";
+};
+
 export default function RegistrationFormPage({
   params,
 }: {
@@ -136,7 +155,8 @@ export default function RegistrationFormPage({
         const apiPath = ownerSlug ? `/api/forms/${ownerSlug}/${formSlug}` : `/api/forms/${formSlug}`;
         const response = await fetch(apiPath);
         if (!response.ok) {
-          throw new Error("Failed to load form");
+          const message = await resolveFormLoadError(response);
+          throw new Error(message);
         }
         const data = await response.json();
         setForm(data);
