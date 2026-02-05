@@ -129,6 +129,7 @@ export default function RegistrationFormPage({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
   const [values, setValues] = useState<Record<string, any>>({});
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -301,6 +302,28 @@ export default function RegistrationFormPage({
     });
   }, [form?.uuid]);
 
+  useEffect(() => {
+    if (!success) {
+      setRedirectCountdown(null);
+      return;
+    }
+    setRedirectCountdown(5);
+    const interval = window.setInterval(() => {
+      setRedirectCountdown((prev) => {
+        if (!prev || prev <= 1) return 1;
+        return prev - 1;
+      });
+    }, 1000);
+    const timeout = window.setTimeout(() => {
+      window.location.assign("/");
+    }, 5000);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
+  }, [success]);
+
+
   const totalSections = sections.length;
   const currentSection = sections[activeSectionIndex] ?? sections[0];
   const sectionFields = currentSection?.fields ?? [];
@@ -446,6 +469,46 @@ export default function RegistrationFormPage({
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100">
       <div className="mx-auto max-w-4xl px-4 pb-16 pt-10">
+
+        {success && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 py-8">
+            <div className="w-full max-w-xl rounded-2xl border border-emerald-100 bg-white p-6 shadow-xl">
+              <div className="flex items-start gap-3">
+                <div className="mt-1 flex size-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                  <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M9.5 16.2 5.8 12.5l1.4-1.4 2.3 2.3 7.1-7.1 1.4 1.4-8.5 8.5z"
+                    />
+                  </svg>
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    Form submitted successfully
+                  </h3>
+                  <p className="text-sm text-slate-600">
+                    Redirecting to homepage in {redirectCountdown ?? 5} seconds.
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    See more about us at
+                    <a href="/about" className="ml-1 font-semibold text-primary-blue hover:underline">
+                      About TCIOE
+                    </a>.
+                  </p>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      className="rounded-full bg-primary-blue px-4 py-2 text-xs font-semibold text-white shadow hover:bg-primary-blue/90"
+                      onClick={() => window.location.assign("/")}
+                    >
+                      Go to homepage now
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {requiresCollegeEmail && !canAccessForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 py-8">
@@ -881,11 +944,6 @@ export default function RegistrationFormPage({
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
               {error}
-            </div>
-          )}
-          {success && (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-              {success}
             </div>
           )}
 
