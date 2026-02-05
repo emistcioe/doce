@@ -464,10 +464,10 @@ export default function RegistrationFormPage({
                 <Button
                   type="button"
                   variant="secondary"
-                  disabled={!submitterEmail || otp.status === "sending"}
-                  onClick={() => otp.send(submitterEmail)}
+                  disabled={!submitterEmail || otp.loading}
+                  onClick={() => otp.requestOtp({ email: submitterEmail })}
                 >
-                  {otp.status === "sending" ? "Sending..." : "Send OTP"}
+                  {otp.loading ? "Sending..." : "Send OTP"}
                 </Button>
               </div>
 
@@ -481,10 +481,10 @@ export default function RegistrationFormPage({
                   <Button
                     type="button"
                     variant="secondary"
-                    disabled={!otpCode || otp.status === "verifying"}
-                    onClick={() => otp.verify(otpCode)}
+                    disabled={!otpCode || otp.verifying}
+                    onClick={() => otp.verifyOtp({ email: submitterEmail, code: otpCode })}
                   >
-                    {otp.status === "verifying" ? "Verifying..." : "Verify"}
+                    {otp.verifying ? "Verifying..." : "Verify"}
                   </Button>
                 </div>
               )}
@@ -492,7 +492,7 @@ export default function RegistrationFormPage({
               {otp.status === "verified" && (
                 <p className="mt-2 text-sm text-emerald-600">Email verified successfully.</p>
               )}
-              {otp.status === "error" && (
+              {otp.error && (
                 <p className="mt-2 text-sm text-red-600">{otp.error}</p>
               )}
             </div>
