@@ -173,6 +173,18 @@ export default function RegistrationFormPage({
     () => (form?.description ? sanitizeHtml(form.description) : ""),
     [form?.description]
   );
+  const questionMeta = useMemo(() => {
+    const map = new Map<number, number>();
+    let count = 0;
+    fields.forEach((field) => {
+      if (resolveFieldType(field) === "section_break") {
+        return;
+      }
+      count += 1;
+      map.set(field.id, count);
+    });
+    return { map, total: count };
+  }, [fields]);
 
   const handleValueChange = (fieldId: number, value: any) => {
     setValues((prev) => ({ ...prev, [fieldId]: value }));
@@ -270,6 +282,16 @@ export default function RegistrationFormPage({
   const totalSections = sections.length;
   const currentSection = sections[activeSectionIndex] ?? sections[0];
   const sectionFields = currentSection?.fields ?? [];
+  const sectionQuestionNumbers = sectionFields
+    .map((field) => questionMeta.map.get(field.id))
+    .filter((value): value is number => typeof value === "number");
+  const sectionQuestionRange =
+    sectionQuestionNumbers.length > 0
+      ? {
+          start: sectionQuestionNumbers[0],
+          end: sectionQuestionNumbers[sectionQuestionNumbers.length - 1],
+        }
+      : null;
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -403,9 +425,17 @@ export default function RegistrationFormPage({
                 dangerouslySetInnerHTML={{ __html: descriptionHtml }}
               />
             )}
-            <p className="text-xs text-slate-500">
-              Fields marked with <span className="font-semibold text-red-500">*</span> are required.
-            </p>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span>
+                Fields marked with <span className="font-semibold text-red-500">*</span> are
+                required.
+              </span>
+              {questionMeta.total > 0 && (
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                  {questionMeta.total} questions
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -458,7 +488,10 @@ export default function RegistrationFormPage({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
           {(totalSections > 1 || currentSection?.title || currentSection?.description) && (
             <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
               {totalSections > 1 && (
@@ -467,9 +500,17 @@ export default function RegistrationFormPage({
                     <p className="text-sm font-semibold text-slate-800">
                       Section {activeSectionIndex + 1} of {totalSections}
                     </p>
-                    <p className="text-xs text-slate-500">
-                      Progress {Math.round(((activeSectionIndex + 1) / totalSections) * 100)}%
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      {sectionQuestionRange && (
+                        <span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 shadow-sm">
+                          Questions {sectionQuestionRange.start}–{sectionQuestionRange.end} of{" "}
+                          {questionMeta.total}
+                        </span>
+                      )}
+                      <span>
+                        Progress {Math.round(((activeSectionIndex + 1) / totalSections) * 100)}%
+                      </span>
+                    </div>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
                     <div
@@ -478,6 +519,14 @@ export default function RegistrationFormPage({
                     />
                   </div>
                 </>
+              )}
+              {totalSections === 1 && sectionQuestionRange && (
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <span className="inline-flex items-center rounded-full bg-white px-2.5 py-1 shadow-sm">
+                    Questions {sectionQuestionRange.start}–{sectionQuestionRange.end} of{" "}
+                    {questionMeta.total}
+                  </span>
+                </div>
               )}
               {(currentSection?.title || currentSection?.description) && (
                 <div className="pt-2">
@@ -504,212 +553,234 @@ export default function RegistrationFormPage({
             const ratingMax = Number(config?.max ?? 5);
             const placeholder = config?.placeholder ?? "";
             const questionImage = resolveQuestionImage(field);
+            const questionNumber = questionMeta.map.get(fieldId);
 
             return (
               <div
                 key={fieldId}
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                className={`rounded-2xl border p-5 shadow-sm transition-shadow ${
+                  errorMessage
+                    ? "border-red-200 bg-red-50/40 shadow-red-100"
+                    : "border-slate-200 bg-white hover:shadow-md"
+                }`}
               >
-                {questionImage && (
-                  <div className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                    <img
-                      src={questionImage}
-                      alt="Question illustration"
-                      className="h-auto w-full max-h-64 object-contain"
-                    />
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                  <div className="flex items-center gap-3 sm:flex-col sm:items-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white shadow">
+                      {questionNumber ?? "-"}
+                    </div>
+                    {field.required && (
+                      <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-600">
+                        Required
+                      </span>
+                    )}
                   </div>
-                )}
+                  <div className="min-w-0 flex-1">
+                    {questionImage && (
+                      <div className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                        <img
+                          src={questionImage}
+                          alt="Question illustration"
+                          className="h-auto w-full max-h-64 object-contain"
+                        />
+                      </div>
+                    )}
 
-                <div className="space-y-1">
-                  <Label className="text-sm font-medium text-slate-900">
-                    {label}
-                    {field.required && <span className="text-red-500"> *</span>}
-                  </Label>
-                  {helpText && (
-                    <p className="text-xs text-slate-500">{helpText}</p>
-                  )}
-                </div>
-
-                <div className="mt-3 space-y-3">
-                  {fieldType === "short_text" && (
-                    <Input
-                      value={value || ""}
-                      placeholder={placeholder}
-                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                    />
-                  )}
-
-                  {fieldType === "paragraph" && (
-                    <Textarea
-                      value={value || ""}
-                      placeholder={placeholder}
-                      rows={4}
-                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                    />
-                  )}
-
-                  {fieldType === "number" && (
-                    <Input
-                      type="number"
-                      value={value || ""}
-                      placeholder={placeholder}
-                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                    />
-                  )}
-
-                  {fieldType === "email" && (
-                    <Input
-                      type="email"
-                      value={value || ""}
-                      placeholder={placeholder}
-                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                    />
-                  )}
-
-                  {fieldType === "phone" && (
-                    <Input
-                      type="tel"
-                      value={value || ""}
-                      placeholder={placeholder}
-                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                    />
-                  )}
-
-                  {fieldType === "date" && (
-                    <Input
-                      type="date"
-                      value={value || ""}
-                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                    />
-                  )}
-
-                  {fieldType === "time" && (
-                    <Input
-                      type="time"
-                      value={value || ""}
-                      onChange={(e) => handleValueChange(fieldId, e.target.value)}
-                    />
-                  )}
-
-                  {fieldType === "select" && (
-                    <Select
-                      value={value || ""}
-                      onValueChange={(val) => handleValueChange(fieldId, val)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an option" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {options.map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-
-                  {fieldType === "radio" && (
-                    <RadioGroup
-                      value={value || ""}
-                      onValueChange={(val) => handleValueChange(fieldId, val)}
-                    >
-                      {options.map((option) => (
-                        <div key={option} className="flex items-center space-x-2">
-                          <RadioGroupItem value={option} id={`${fieldId}-${option}`} />
-                          <Label htmlFor={`${fieldId}-${option}`}>{option}</Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  )}
-
-                  {(fieldType === "multi_select" ||
-                    fieldType === "checkbox") && (
-                    <div className="space-y-2">
-                      {options.map((option) => {
-                        const checked = Array.isArray(value)
-                          ? value.includes(option)
-                          : false;
-                        return (
-                          <div key={option} className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={checked}
-                              onCheckedChange={(checkedValue) => {
-                                let next = Array.isArray(value) ? [...value] : [];
-                                if (checkedValue) {
-                                  next.push(option);
-                                } else {
-                                  next = next.filter((item) => item !== option);
-                                }
-                                handleValueChange(fieldId, next);
-                              }}
-                            />
-                            <Label>{option}</Label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {fieldType === "rating" && (
-                    <div className="space-y-2">
-                      <Slider
-                        value={[value || 1]}
-                        min={1}
-                        max={ratingMax}
-                        step={1}
-                        onValueChange={(val) => handleValueChange(fieldId, val[0])}
-                      />
-                      <p className="text-xs text-slate-500">
-                        Rating: {value || 1} / {ratingMax}
-                      </p>
-                    </div>
-                  )}
-
-                  {fieldType === "image" && (
-                    <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3">
-                      <Label className="text-xs font-medium text-slate-700">
-                        Upload image
+                    <div className="space-y-1">
+                      {typeof questionNumber === "number" && questionMeta.total > 0 && (
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                          Question {questionNumber} of {questionMeta.total}
+                        </p>
+                      )}
+                      <Label className="text-sm font-semibold text-slate-900">
+                        {label}
+                        {field.required && <span className="text-red-500"> *</span>}
                       </Label>
-                      {filePreviews[fieldId] && (
-                        <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
-                          <img
-                            src={filePreviews[fieldId]}
-                            alt="Selected upload"
-                            className="h-40 w-full object-contain"
-                          />
+                      {helpText && (
+                        <p className="text-xs text-slate-500">{helpText}</p>
+                      )}
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      {fieldType === "short_text" && (
+                        <Input
+                          value={value || ""}
+                          placeholder={placeholder}
+                          onChange={(e) => handleValueChange(fieldId, e.target.value)}
+                        />
+                      )}
+
+                      {fieldType === "paragraph" && (
+                        <Textarea
+                          value={value || ""}
+                          placeholder={placeholder}
+                          rows={4}
+                          onChange={(e) => handleValueChange(fieldId, e.target.value)}
+                        />
+                      )}
+
+                      {fieldType === "number" && (
+                        <Input
+                          type="number"
+                          value={value || ""}
+                          placeholder={placeholder}
+                          onChange={(e) => handleValueChange(fieldId, e.target.value)}
+                        />
+                      )}
+
+                      {fieldType === "email" && (
+                        <Input
+                          type="email"
+                          value={value || ""}
+                          placeholder={placeholder}
+                          onChange={(e) => handleValueChange(fieldId, e.target.value)}
+                        />
+                      )}
+
+                      {fieldType === "phone" && (
+                        <Input
+                          type="tel"
+                          value={value || ""}
+                          placeholder={placeholder}
+                          onChange={(e) => handleValueChange(fieldId, e.target.value)}
+                        />
+                      )}
+
+                      {fieldType === "date" && (
+                        <Input
+                          type="date"
+                          value={value || ""}
+                          onChange={(e) => handleValueChange(fieldId, e.target.value)}
+                        />
+                      )}
+
+                      {fieldType === "time" && (
+                        <Input
+                          type="time"
+                          value={value || ""}
+                          onChange={(e) => handleValueChange(fieldId, e.target.value)}
+                        />
+                      )}
+
+                      {fieldType === "select" && (
+                        <Select
+                          value={value || ""}
+                          onValueChange={(val) => handleValueChange(fieldId, val)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select an option" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {options.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+
+                      {fieldType === "radio" && (
+                        <RadioGroup
+                          value={value || ""}
+                          onValueChange={(val) => handleValueChange(fieldId, val)}
+                        >
+                          {options.map((option) => (
+                            <div key={option} className="flex items-center space-x-2">
+                              <RadioGroupItem value={option} id={`${fieldId}-${option}`} />
+                              <Label htmlFor={`${fieldId}-${option}`}>{option}</Label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      )}
+
+                      {(fieldType === "multi_select" || fieldType === "checkbox") && (
+                        <div className="space-y-2">
+                          {options.map((option) => {
+                            const checked = Array.isArray(value)
+                              ? value.includes(option)
+                              : false;
+                            return (
+                              <div key={option} className="flex items-center space-x-2">
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(checkedValue) => {
+                                    let next = Array.isArray(value) ? [...value] : [];
+                                    if (checkedValue) {
+                                      next.push(option);
+                                    } else {
+                                      next = next.filter((item) => item !== option);
+                                    }
+                                    handleValueChange(fieldId, next);
+                                  }}
+                                />
+                                <Label>{option}</Label>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
-                      <Input
-                        className="mt-2"
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) =>
-                          handleFileChange(
-                            fieldId,
-                            e.target.files?.[0] || null
-                          )
-                        }
-                      />
-                      {files[fieldId] && (
-                        <div className="mt-2 flex items-center justify-between text-xs text-slate-600">
-                          <span>{files[fieldId]?.name}</span>
-                          <button
-                            type="button"
-                            className="text-red-500 hover:underline"
-                            onClick={() => handleFileChange(fieldId, null)}
-                          >
-                            Remove
-                          </button>
+
+                      {fieldType === "rating" && (
+                        <div className="space-y-2">
+                          <Slider
+                            value={[value || 1]}
+                            min={1}
+                            max={ratingMax}
+                            step={1}
+                            onValueChange={(val) => handleValueChange(fieldId, val[0])}
+                          />
+                          <p className="text-xs text-slate-500">
+                            Rating: {value || 1} / {ratingMax}
+                          </p>
+                        </div>
+                      )}
+
+                      {fieldType === "image" && (
+                        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3">
+                          <Label className="text-xs font-medium text-slate-700">
+                            Upload image
+                          </Label>
+                          {filePreviews[fieldId] && (
+                            <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                              <img
+                                src={filePreviews[fieldId]}
+                                alt="Selected upload"
+                                className="h-40 w-full object-contain"
+                              />
+                            </div>
+                          )}
+                          <Input
+                            className="mt-2"
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) =>
+                              handleFileChange(fieldId, e.target.files?.[0] || null)
+                            }
+                          />
+                          {files[fieldId] && (
+                            <div className="mt-2 flex items-center justify-between text-xs text-slate-600">
+                              <span>{files[fieldId]?.name}</span>
+                              <button
+                                type="button"
+                                className="text-red-500 hover:underline"
+                                onClick={() => handleFileChange(fieldId, null)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
 
-                {errorMessage && (
-                  <p className="mt-3 text-xs text-red-500">{errorMessage}</p>
-                )}
+                    {errorMessage && (
+                      <p className="mt-3 text-xs font-medium text-red-600">
+                        {errorMessage}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             );
           })}
