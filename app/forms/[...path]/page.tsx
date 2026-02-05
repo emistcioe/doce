@@ -337,7 +337,11 @@ export default function RegistrationFormPage({
           setSubmitting(false);
           return;
         }
-        if (otp.status !== "verified" || !otp.sessionId) {
+        if (!canAccessForm) {
+          setSubmitting(false);
+          return;
+        }
+        if (!otp.sessionId) {
           setError("Please verify your college email before submitting.");
           setSubmitting(false);
           return;
@@ -873,11 +877,6 @@ export default function RegistrationFormPage({
             </div>
           )}
 
-          {!allowAnonymous && requiresCollegeEmail && otp.status !== "verified" && (
-            <p className="text-xs text-red-500">
-              Please verify your college email before submitting.
-            </p>
-          )}
 
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
