@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useDepartment } from "@/hooks/use-department";
+import { generateEventSlug } from "@/hooks/use-events";
 
 type EventDetail = {
   uuid: string;
@@ -27,6 +28,13 @@ type EventDetail = {
   location?: string | null;
   organizer?: string | null;
   registrationLink?: string | null;
+  gallery?: EventGalleryItem[] | null;
+};
+
+type EventGalleryItem = {
+  uuid: string;
+  image: string;
+  caption?: string | null;
 };
 
 const formatDate = (value?: string | null) => {
@@ -79,20 +87,66 @@ export default function EventDetailPage({
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [galleryItems, setGalleryItems] = useState<EventGalleryItem[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [galleryError, setGalleryError] = useState<string | null>(null);
+
+  const eventKey = params.uuid;
+  const isUuid = useMemo(
+    () =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        eventKey
+      ),
+    [eventKey]
+  );
 
   useEffect(() => {
-    if (!params.uuid) return;
+    if (!eventKey) return;
+    if (!isUuid && !dept?.uuid) return;
 
     const controller = new AbortController();
     const fetchEvent = async () => {
       setLoading(true);
       setError(null);
       try {
+        let targetUuid = eventKey;
+
+        if (!isUuid) {
+          const searchParams = new URLSearchParams({
+            limit: "200",
+            department: dept?.uuid || "",
+          });
+          const listResponse = await fetch(
+            `/api/website/global-events?${searchParams.toString()}`,
+            {
+              headers: { Accept: "application/json" },
+              signal: controller.signal,
+            }
+          );
+          if (!listResponse.ok) {
+            throw new Error(`Failed to load events (${listResponse.status})`);
+          }
+          const listData = await listResponse.json();
+          const events = Array.isArray(listData?.results)
+            ? listData.results
+            : [];
+          const matched = events.find(
+            (item: EventDetail) => generateEventSlug(item.title) === eventKey
+          );
+          if (!matched?.uuid) {
+            throw new Error("Event not found");
+          }
+          targetUuid = matched.uuid;
+        }
+
         // Fetch the single event via our API route
-        const response = await fetch(`/api/website/global-events/${params.uuid}`, {
-          headers: { Accept: "application/json" },
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `/api/website/global-events/${targetUuid}`,
+          {
+            headers: { Accept: "application/json" },
+            signal: controller.signal,
+          }
+        );
         if (!response.ok) {
           throw new Error(`Event not found (${response.status})`);
         }
@@ -110,7 +164,47 @@ export default function EventDetailPage({
 
     void fetchEvent();
     return () => controller.abort();
-  }, [params.uuid]);
+  }, [eventKey, isUuid, dept?.uuid]);
+
+  useEffect(() => {
+    if (!event?.uuid) return;
+
+    const controller = new AbortController();
+    const fetchGallery = async () => {
+      setGalleryLoading(true);
+      setGalleryError(null);
+      try {
+        const params = new URLSearchParams({
+          limit: "12",
+          source_type: "global_event",
+          source_identifier: event.uuid,
+        });
+        const response = await fetch(
+          `/api/proxy/api/v1/public/website-mod/global-gallery?${params.toString()}`,
+          {
+            headers: { Accept: "application/json" },
+            signal: controller.signal,
+            cache: "no-store",
+          }
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to load gallery (${response.status})`);
+        }
+        const data = await response.json();
+        setGalleryItems(Array.isArray(data?.results) ? data.results : []);
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+        setGalleryError(
+          err instanceof Error ? err.message : "Failed to load gallery"
+        );
+      } finally {
+        setGalleryLoading(false);
+      }
+    };
+
+    void fetchGallery();
+    return () => controller.abort();
+  }, [event?.uuid]);
 
   if (loading) {
     return (
@@ -161,6 +255,11 @@ export default function EventDetailPage({
   const status = statusOf(event.eventStartDate, event.eventEndDate);
   const startTime = formatTime(event.eventStartDate);
   const endTime = formatTime(event.eventEndDate);
+  const gallery = useMemo(() => {
+    const direct = Array.isArray(event.gallery) ? event.gallery : [];
+    if (direct.length > 0) return direct;
+    return galleryItems;
+  }, [event.gallery, galleryItems]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -308,6 +407,47 @@ export default function EventDetailPage({
               className="text-slate-600 leading-relaxed"
               dangerouslySetInnerHTML={{ __html: event.description }}
             />
+          </div>
+        )}
+
+        {/* Event Gallery */}
+        {(galleryLoading || gallery.length > 0 || galleryError) && (
+          <div className="mt-10">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">
+              Event Gallery
+            </h2>
+
+            {galleryLoading && (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-slate-700"></div>
+              </div>
+            )}
+
+            {!galleryLoading && gallery.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {gallery.map((item) => (
+                  <div
+                    key={item.uuid}
+                    className="relative aspect-square overflow-hidden rounded-2xl bg-slate-100"
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.caption || event.title}
+                      className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                    />
+                    {item.caption && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-xs text-white">
+                        {item.caption}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!galleryLoading && gallery.length === 0 && galleryError && (
+              <p className="text-sm text-slate-500">{galleryError}</p>
+            )}
           </div>
         )}
 

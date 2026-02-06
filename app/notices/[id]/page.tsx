@@ -9,11 +9,16 @@ import { ArrowLeft, Calendar, Download, FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sanitizeHtml } from "@/lib/utils/sanitize";
 import Link from "next/link";
+import { generateEventSlug } from "@/hooks/use-events";
 
 export default function NoticeDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const noticeId = params.id as string;
+  const noticeKey = params.id as string;
+  const isUuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      noticeKey
+    );
 
   const { data, loading, error } = useDepartmentNotices({
     ordering: "-publishedAt",
@@ -21,11 +26,17 @@ export default function NoticeDetailsPage() {
   });
 
   const allNotices = (data?.results || []).filter((n) => n.isApprovedByDepartment);
-  const notice = allNotices.find((n) => n.uuid === noticeId);
+  const notice = allNotices.find((n) =>
+    isUuid ? n.uuid === noticeKey : generateEventSlug(n.title) === noticeKey
+  );
   
   // Get latest 5 notices for sidebar (excluding current)
   const latestNotices = allNotices
-    .filter((n) => n.uuid !== noticeId)
+    .filter((n) =>
+      isUuid
+        ? n.uuid !== noticeKey
+        : generateEventSlug(n.title) !== noticeKey
+    )
     .slice(0, 5);
 
   const formatDate = (d: string) =>
@@ -193,7 +204,10 @@ export default function NoticeDetailsPage() {
             <h3 className="text-xl font-bold mb-4">Latest Notices</h3>
             <div className="space-y-3">
               {latestNotices.map((n) => (
-                <Link key={n.uuid} href={`/notices/${n.uuid}`}>
+                <Link
+                  key={n.uuid}
+                  href={`/notices/${generateEventSlug(n.title) || n.uuid}`}
+                >
                   <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer">
                     <h4 className="font-medium text-sm mb-2 line-clamp-2 hover:text-primary transition-colors">
                       {n.title}

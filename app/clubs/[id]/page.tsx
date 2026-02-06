@@ -21,6 +21,7 @@ import {
   formatEventDate,
   isUpcomingEvent,
   isPastEvent,
+  generateEventSlug,
 } from "@/hooks/use-events";
 import { API_BASE, API_WEBSITE_PUBLIC_PREFIX } from "@/lib/env";
 import type { ClubEvent } from "@/hooks/use-events";
@@ -323,7 +324,7 @@ export default function ClubDetailPage({ params }: ClubDetailPageProps) {
               {upcomingEvents.map((event) => (
                 <Link
                   key={event.uuid}
-                  href={`/events/${event.uuid}`}
+                  href={`/events/${generateEventSlug(event.title) || event.uuid}`}
                   className="block rounded-xl border border-slate-200 p-4 hover:border-slate-300"
                 >
                   <p className="text-sm font-semibold text-slate-900">{event.title}</p>
@@ -351,7 +352,7 @@ export default function ClubDetailPage({ params }: ClubDetailPageProps) {
               {pastEvents.map((event) => (
                 <Link
                   key={event.uuid}
-                  href={`/events/${event.uuid}`}
+                  href={`/events/${generateEventSlug(event.title) || event.uuid}`}
                   className="block rounded-xl border border-slate-200 p-4 hover:border-slate-300"
                 >
                   <p className="text-sm font-semibold text-slate-900">{event.title}</p>

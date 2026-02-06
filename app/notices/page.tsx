@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { generateEventSlug } from "@/hooks/use-events";
 
 export default function NoticesPage() {
   const { data, loading, error } = useDepartmentNotices({
@@ -242,7 +243,7 @@ export default function NoticesPage() {
 
                     {/* Bottom row: Read More button and icons */}
                     <div className="flex items-center justify-between mt-2">
-                      <Link href={`/notices/${notice.uuid}`}>
+                    <Link href={`/notices/${generateEventSlug(notice.title) || notice.uuid}`}>
                         <Button size="sm" className="px-6">
                           Read More
                         </Button>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, ArrowRight, Clock } from "lucide-react";
 import { useDepartment, useDepartmentEvents } from "@/hooks/use-department";
 import { Skeleton } from "@/components/ui/skeleton";
+import { generateEventSlug } from "@/hooks/use-events";
 
 const sanitizeText = (value?: string | null) =>
   value ? value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
@@ -147,6 +148,7 @@ export default function EventsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {upcomingEvents.map((event) => {
                 const status = statusOf(event.eventStartDate, event.eventEndDate);
+                const eventSlug = generateEventSlug(event.title) || event.uuid;
                 return (
                   <Card
                     key={event.uuid}
@@ -203,7 +205,7 @@ export default function EventsPage() {
                         className="w-full group/btn hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all duration-200"
                         asChild
                       >
-                        <Link href={`/events/${event.uuid}`}>
+                        <Link href={`/events/${eventSlug}`}>
                           View Details
                           <ArrowRight className="h-4 w-4 ml-2 transition-transform group-hover/btn:translate-x-1" />
                         </Link>
@@ -268,7 +270,7 @@ export default function EventsPage() {
                       className="w-full text-slate-500 hover:text-slate-900"
                       asChild
                     >
-                      <Link href={`/events/${event.uuid}`}>
+                      <Link href={`/events/${generateEventSlug(event.title) || event.uuid}`}>
                         View Details
                         <ArrowRight className="h-3 w-3 ml-1" />
                       </Link>
