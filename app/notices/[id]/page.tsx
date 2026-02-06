@@ -14,13 +14,30 @@ import { generateEventSlug } from "@/hooks/use-events";
 export default function NoticeDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const noticeKey = params.id as string;
+  const rawParam = Array.isArray(params.id) ? params.id[0] : params.id;
+  const noticeKey = rawParam ? decodeURIComponent(rawParam) : "";
+  const normalizeNoticeSlug = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^\p{L}\p{N}\s_-]+/gu, "")
+      .replace(/[_\s]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
   const isUuid =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
       noticeKey
     );
-  const rawKey = (noticeKey || "").toLowerCase();
-  const normalizedKey = generateEventSlug((noticeKey || "").replace(/_/g, " "));
+  const normalizedKey = normalizeNoticeSlug(noticeKey);
+
+  const matchesNoticeKey = (n: { uuid: string; slug?: string; title?: string }) => {
+    if (isUuid) return n.uuid === noticeKey;
+    const candidates = [n.slug || "", n.title || "", generateEventSlug(n.title || "")];
+    return candidates.some((value) => {
+      const normalized = normalizeNoticeSlug(value);
+      return normalized && normalized === normalizedKey;
+    });
+  };
 
   const { data, loading, error } = useDepartmentNotices({
     ordering: "-publishedAt",
@@ -28,22 +45,10 @@ export default function NoticeDetailsPage() {
   });
 
   const allNotices = (data?.results || []).filter((n) => n.isApprovedByDepartment);
-  const notice = allNotices.find((n) => {
-    if (isUuid) return n.uuid === noticeKey;
-    const slug = (n.slug || "").toLowerCase();
-    if (slug && slug === normalizedKey) return true;
-    return generateEventSlug(n.title) === normalizedKey;
-  });
-  
+  const notice = allNotices.find(matchesNoticeKey);
+
   // Get latest 5 notices for sidebar (excluding current)
-  const latestNotices = allNotices
-    .filter((n) => {
-      if (isUuid) return n.uuid !== noticeKey;
-      const slug = (n.slug || "").toLowerCase();
-      if (slug) return slug !== normalizedKey;
-      return generateEventSlug(n.title) !== normalizedKey;
-    })
-    .slice(0, 5);
+  const latestNotices = allNotices.filter((n) => !matchesNoticeKey(n)).slice(0, 5);
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("en-US", {
@@ -212,7 +217,7 @@ export default function NoticeDetailsPage() {
               {latestNotices.map((n) => (
                 <Link
                   key={n.uuid}
-                  href={`/notices/${generateEventSlug(n.title) || n.uuid}`}
+                  href={`/notices/${n.slug || generateEventSlug(n.title) || n.uuid}`}
                 >
                   <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer">
                     <h4 className="font-medium text-sm mb-2 line-clamp-2 hover:text-primary transition-colors">
