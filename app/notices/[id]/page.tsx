@@ -21,7 +21,6 @@ export default function NoticeDetailsPage() {
     );
   const rawKey = (noticeKey || "").toLowerCase();
   const normalizedKey = generateEventSlug((noticeKey || "").replace(/_/g, " "));
-  const normalizedKey = generateEventSlug((noticeKey || "").replace(/_/g, " "));
 
   const { data, loading, error } = useDepartmentNotices({
     ordering: "-publishedAt",
