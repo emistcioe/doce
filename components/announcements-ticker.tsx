@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useDepartmentNotices } from "@/hooks/use-department";
+import { generateEventSlug } from "@/hooks/use-events";
 
 type Item = { kind: "notice"; title: string; href: string };
 
@@ -21,7 +22,7 @@ export default function AnnouncementsTicker() {
       .map((n) => ({
         kind: "notice" as const,
         title: n.title ?? "",
-        href: `/notices/${n.uuid}`,
+        href: `/notices/${n.slug || generateEventSlug(n.title) || n.uuid}`,
       }));
     return no;
   }, [notices?.results]);

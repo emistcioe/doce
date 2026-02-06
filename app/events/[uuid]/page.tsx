@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useDepartment } from "@/hooks/use-department";
+import { API_BASE } from "@/lib/env";
 import { generateEventSlug } from "@/hooks/use-events";
 
 type EventDetail = {
@@ -81,8 +82,9 @@ const tcase = (s?: string) =>
 export default function EventDetailPage({
   params,
 }: {
-  params: { uuid: string };
+  params: Promise<{ uuid: string }>;
 }) {
+  const resolvedParams = React.use(params);
   const { data: dept } = useDepartment();
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,7 +93,11 @@ export default function EventDetailPage({
   const [galleryLoading, setGalleryLoading] = useState(false);
   const [galleryError, setGalleryError] = useState<string | null>(null);
 
-  const eventKey = params.uuid;
+  const eventKey = resolvedParams.uuid;
+  const normalizedKey = useMemo(
+    () => generateEventSlug((eventKey || "").replace(/_/g, " ")),
+    [eventKey]
+  );
   const isUuid = useMemo(
     () =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -131,7 +137,7 @@ export default function EventDetailPage({
             ? listData.results
             : [];
           const matched = events.find(
-            (item: EventDetail) => generateEventSlug(item.title) === eventKey
+            (item: EventDetail) => generateEventSlug(item.title) === normalizedKey
           );
           if (!matched?.uuid) {
             throw new Error("Event not found");
@@ -206,6 +212,19 @@ export default function EventDetailPage({
     return () => controller.abort();
   }, [event?.uuid]);
 
+  const resolveImageUrl = (value?: string | null) => {
+    if (!value) return value || "";
+    if (value.startsWith("http://") || value.startsWith("https://")) return value;
+    const base = API_BASE.replace(/\/$/, "");
+    return `${base}${value.startsWith("/") ? "" : "/"}${value}`;
+  };
+
+  const gallery = useMemo(() => {
+    const direct = Array.isArray(event?.gallery) ? event?.gallery : [];
+    if (direct.length > 0) return direct;
+    return galleryItems;
+  }, [event?.gallery, galleryItems]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -255,11 +274,6 @@ export default function EventDetailPage({
   const status = statusOf(event.eventStartDate, event.eventEndDate);
   const startTime = formatTime(event.eventStartDate);
   const endTime = formatTime(event.eventEndDate);
-  const gallery = useMemo(() => {
-    const direct = Array.isArray(event.gallery) ? event.gallery : [];
-    if (direct.length > 0) return direct;
-    return galleryItems;
-  }, [event.gallery, galleryItems]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -277,7 +291,7 @@ export default function EventDetailPage({
         {event.thumbnail && (
           <div className="aspect-[21/9] rounded-2xl overflow-hidden mb-8 bg-slate-100">
             <img
-              src={event.thumbnail}
+              src={resolveImageUrl(event.thumbnail)}
               alt={event.title}
               className="w-full h-full object-cover"
             />
@@ -431,7 +445,7 @@ export default function EventDetailPage({
                     className="relative aspect-square overflow-hidden rounded-2xl bg-slate-100"
                   >
                     <img
-                      src={item.image}
+                      src={resolveImageUrl(item.image)}
                       alt={item.caption || event.title}
                       className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
                     />

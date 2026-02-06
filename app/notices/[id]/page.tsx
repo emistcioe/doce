@@ -19,6 +19,9 @@ export default function NoticeDetailsPage() {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
       noticeKey
     );
+  const rawKey = (noticeKey || "").toLowerCase();
+  const normalizedKey = generateEventSlug((noticeKey || "").replace(/_/g, " "));
+  const normalizedKey = generateEventSlug((noticeKey || "").replace(/_/g, " "));
 
   const { data, loading, error } = useDepartmentNotices({
     ordering: "-publishedAt",
@@ -26,17 +29,21 @@ export default function NoticeDetailsPage() {
   });
 
   const allNotices = (data?.results || []).filter((n) => n.isApprovedByDepartment);
-  const notice = allNotices.find((n) =>
-    isUuid ? n.uuid === noticeKey : generateEventSlug(n.title) === noticeKey
-  );
+  const notice = allNotices.find((n) => {
+    if (isUuid) return n.uuid === noticeKey;
+    const slug = (n.slug || "").toLowerCase();
+    if (slug && slug === normalizedKey) return true;
+    return generateEventSlug(n.title) === normalizedKey;
+  });
   
   // Get latest 5 notices for sidebar (excluding current)
   const latestNotices = allNotices
-    .filter((n) =>
-      isUuid
-        ? n.uuid !== noticeKey
-        : generateEventSlug(n.title) !== noticeKey
-    )
+    .filter((n) => {
+      if (isUuid) return n.uuid !== noticeKey;
+      const slug = (n.slug || "").toLowerCase();
+      if (slug) return slug !== normalizedKey;
+      return generateEventSlug(n.title) !== normalizedKey;
+    })
     .slice(0, 5);
 
   const formatDate = (d: string) =>

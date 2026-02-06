@@ -243,7 +243,7 @@ export default function NoticesPage() {
 
                     {/* Bottom row: Read More button and icons */}
                     <div className="flex items-center justify-between mt-2">
-                    <Link href={`/notices/${generateEventSlug(notice.title) || notice.uuid}`}>
+                    <Link href={`/notices/${notice.slug || generateEventSlug(notice.title) || notice.uuid}`}>
                         <Button size="sm" className="px-6">
                           Read More
                         </Button>
