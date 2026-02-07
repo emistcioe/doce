@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Image as ImageIcon } from "lucide-react";
@@ -13,6 +13,14 @@ interface ClubGalleryPageProps {
   params: Promise<{ id: string }>;
 }
 
+type GalleryItem = {
+  uuid?: string;
+  id?: string;
+  image?: string;
+  url?: string;
+  caption?: string | null;
+};
+
 export default function ClubGalleryPage({ params }: ClubGalleryPageProps) {
   const resolvedParams = React.use(params);
   const { club, loading, error, refetch } = useClub({ id: resolvedParams.id });
@@ -22,18 +30,37 @@ export default function ClubGalleryPage({ params }: ClubGalleryPageProps) {
     club: club?.uuid,
   });
 
-  const [eventGalleryImages, setEventGalleryImages] = useState<any[]>([]);
+  const [clubGalleryItems, setClubGalleryItems] = useState<GalleryItem[]>([]);
+  const [eventDetailGallery, setEventDetailGallery] = useState<GalleryItem[]>([]);
+  const [eventGalleryItems, setEventGalleryItems] = useState<GalleryItem[]>([]);
+
+  const resolveImageUrl = (value?: string | null) => {
+    if (!value) return "";
+    if (value.startsWith("http://") || value.startsWith("https://")) return value;
+    const base = API_BASE.replace(/\/$/, "");
+    return `${base}${value.startsWith("/") ? "" : "/"}${value}`;
+  };
+
+  const normalizeGalleryItems = (items: GalleryItem[]) =>
+    items
+      .map((item) => {
+        const src = resolveImageUrl(item.image || item.url);
+        if (!src) return null;
+        return { ...item, image: src };
+      })
+      .filter((item): item is GalleryItem => Boolean(item));
 
   useEffect(() => {
     let isMounted = true;
     if (!clubEvents.length) {
-      setEventGalleryImages([]);
+      setEventDetailGallery([]);
+      setEventGalleryItems([]);
       return;
     }
 
     const fetchDetails = async () => {
       try {
-        const detailPromises = clubEvents.slice(0, 8).map(async (event) => {
+        const detailPromises = clubEvents.slice(0, 6).map(async (event) => {
           const response = await fetch(`${API_BASE.replace(/\/$/, "")}${API_WEBSITE_PUBLIC_PREFIX}/global-events/${event.uuid}`, {
             cache: "no-store",
           });
@@ -41,15 +68,40 @@ export default function ClubGalleryPage({ params }: ClubGalleryPageProps) {
           return (await response.json()) as ClubEvent;
         });
 
-        const results = await Promise.all(detailPromises);
+        const galleryPromises = clubEvents.slice(0, 4).map(async (event) => {
+          const params = new URLSearchParams({
+            limit: "12",
+            source_type: "global_event",
+            source_identifier: event.uuid,
+          });
+          const response = await fetch(
+            `/api/proxy/api/v1/public/website-mod/global-gallery?${params.toString()}`,
+            { cache: "no-store" }
+          );
+          if (!response.ok) return [];
+          const data = await response.json();
+          return Array.isArray(data?.results) ? data.results : [];
+        });
+
+        const [results, galleryResults] = await Promise.all([
+          Promise.all(detailPromises),
+          Promise.all(galleryPromises),
+        ]);
         if (isMounted) {
-          const images = results
-            .filter((item): item is ClubEvent => Boolean(item))
-            .flatMap((item) => item.gallery || []);
-          setEventGalleryImages(images);
+          const detailGallery = normalizeGalleryItems(
+            results
+              .filter((item): item is ClubEvent => Boolean(item))
+              .flatMap((item) => item.gallery || [])
+          );
+          const eventGallery = normalizeGalleryItems(
+            galleryResults.flat().filter(Boolean)
+          );
+          setEventDetailGallery(detailGallery);
+          setEventGalleryItems(eventGallery);
         }
       } catch {
-        setEventGalleryImages([]);
+        setEventDetailGallery([]);
+        setEventGalleryItems([]);
       }
     };
 
@@ -58,6 +110,43 @@ export default function ClubGalleryPage({ params }: ClubGalleryPageProps) {
       isMounted = false;
     };
   }, [clubEvents]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!club?.uuid) {
+      setClubGalleryItems([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const fetchClubGallery = async () => {
+      try {
+        const params = new URLSearchParams({
+          limit: "30",
+          source_type: "club_gallery",
+          source_identifier: club.uuid,
+        });
+        const response = await fetch(
+          `/api/proxy/api/v1/public/website-mod/global-gallery?${params.toString()}`,
+          { cache: "no-store", signal: controller.signal }
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        const results = Array.isArray(data?.results) ? data.results : [];
+        if (isMounted) {
+          setClubGalleryItems(normalizeGalleryItems(results));
+        }
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+      }
+    };
+
+    void fetchClubGallery();
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [club?.uuid]);
 
   if (loading) {
     return (
@@ -84,7 +173,17 @@ export default function ClubGalleryPage({ params }: ClubGalleryPageProps) {
     );
   }
 
-  const galleryItems = [...eventGalleryImages];
+  const galleryItems = useMemo(() => {
+    const items = [...clubGalleryItems, ...eventDetailGallery, ...eventGalleryItems];
+    const seen = new Set<string>();
+    return items.filter((item) => {
+      const src = item.image || item.url;
+      if (!src) return false;
+      if (seen.has(src)) return false;
+      seen.add(src);
+      return true;
+    });
+  }, [clubGalleryItems, eventDetailGallery, eventGalleryItems]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -119,7 +218,7 @@ export default function ClubGalleryPage({ params }: ClubGalleryPageProps) {
                 className="relative h-48 overflow-hidden rounded-xl bg-slate-100"
               >
                 <Image
-                  src={item.image || item.url || item}
+                  src={item.image || item.url || ""}
                   alt={item.caption || "Club gallery"}
                   fill
                   className="object-cover"
