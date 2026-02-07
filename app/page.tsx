@@ -83,6 +83,21 @@ function humanizeLabel(value?: string) {
     .join(" ");
 }
 
+function stripHtml(input?: string) {
+  if (!input) return "";
+  const sanitized = sanitizeHtml(input);
+  return sanitized
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export default async function HomePage() {
   const slug = departmentSlugFromCode(DEPARTMENT_CODE);
 
@@ -469,6 +484,7 @@ export default async function HomePage() {
                   form.owner_name ??
                   dept?.name ??
                   "Department";
+                const descriptionText = stripHtml(form.description || "");
                 return (
                   <Card
                     key={form.uuid}
@@ -479,7 +495,7 @@ export default async function HomePage() {
                         {form.title}
                       </CardTitle>
                       <CardDescription className="text-sm text-muted-foreground line-clamp-3">
-                        {form.description || "Registration form"}
+                        {descriptionText || "Registration form"}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-0">
