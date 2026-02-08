@@ -74,9 +74,40 @@ export default function NoticesPage() {
     });
   }, [notices, searchQuery, selectedCategory, startDate, endDate]);
 
+  const decodeHtmlEntities = (input: string) => {
+    let out = input;
+
+    // Run decoding twice to handle common double-encoded sequences like
+    // "&amp;nbsp;" or "&amp;#39;".
+    for (let i = 0; i < 2; i += 1) {
+      const decoded = out
+        .replace(/&amp;/gi, "&")
+        .replace(/&nbsp;|&#160;/gi, " ")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&quot;/gi, '"')
+        .replace(/&apos;|&#39;/gi, "'")
+        .replace(/&#x([0-9a-f]+);/gi, (match, hex) => {
+          const codePoint = Number.parseInt(hex, 16);
+          return Number.isNaN(codePoint) ? match : String.fromCodePoint(codePoint);
+        })
+        .replace(/&#(\d+);/g, (match, code) => {
+          const codePoint = Number.parseInt(code, 10);
+          return Number.isNaN(codePoint) ? match : String.fromCodePoint(codePoint);
+        });
+
+      if (decoded === out) break;
+      out = decoded;
+    }
+
+    return out;
+  };
+
   // Helper to strip HTML and truncate description
   const getShortDescription = (html: string, maxLength = 150) => {
-    const text = html.replace(/<[^>]*>/g, "").trim();
+    const text = decodeHtmlEntities(html.replace(/<[^>]*>/g, " "))
+      .replace(/\s+/g, " ")
+      .trim();
     if (text.length <= maxLength) return text;
     return text.slice(0, maxLength).trim() + "...";
   };
