@@ -30,6 +30,18 @@ function formatTitle(title?: string | null): string {
   return title;
 }
 
+function staffPriority(designation?: string | null): number {
+  const d = (designation || "").toUpperCase();
+
+  // Order for "Department Staff": HOD -> Program Coordinator -> Deputy HOD -> others.
+  if (d.includes("HEAD OF DEPARTMENT") && !d.includes("DEPUTY")) return 0;
+  if (d.includes("PROGRAM COORDINATOR") || d.includes("PROGRAM CO-ORDINATOR"))
+    return 1;
+  if (d.includes("DEPUTY HEAD OF DEPARTMENT") || (d.includes("DEPUTY") && d.includes("HEAD") && d.includes("DEPARTMENT")))
+    return 2;
+  return 3;
+}
+
 export default function FacultyPage() {
   const { data: dept } = useDepartment();
   const {
@@ -43,7 +55,12 @@ export default function FacultyPage() {
   const staff =
     staffData?.results
       ?.slice()
-      .sort((a, b) => a.displayOrder - b.displayOrder) || [];
+      .sort((a, b) => {
+        const pa = staffPriority(a.designation);
+        const pb = staffPriority(b.designation);
+        if (pa !== pb) return pa - pb;
+        return (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
+      }) || [];
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [teachers, setTeachers] = useState<

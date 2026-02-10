@@ -98,6 +98,18 @@ function stripHtml(input?: string) {
     .trim();
 }
 
+function normalizeStaffDesignation(value?: string | null) {
+  return (value || "")
+    .toLowerCase()
+    .replace(/[_\s]+/g, " ")
+    .trim();
+}
+
+function isHeadOfDepartmentDesignation(value?: string | null) {
+  const designation = normalizeStaffDesignation(value);
+  return designation.includes("head of department") && !designation.includes("deputy");
+}
+
 export default async function HomePage() {
   const slug = departmentSlugFromCode(DEPARTMENT_CODE);
 
@@ -221,9 +233,12 @@ export default async function HomePage() {
   const events = eventsRes?.results || [];
   const notices = (noticesRes?.results || []).filter((n) => n.isApprovedByDepartment);
   const featuredNotice = notices.find((n) => n.isFeatured && n.thumbnail);
-  const hod = (staffsRes?.results || []).sort(
-    (a, b) => a.displayOrder - b.displayOrder
-  )[0];
+  const staffEntries = (staffsRes?.results || [])
+    .slice()
+    .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+  const hod =
+    staffEntries.find((staff) => isHeadOfDepartmentDesignation(staff.designation)) ||
+    staffEntries[0];
   const researchHighlights = researchPayload?.results ?? [];
   const projectHighlights = projectPayload?.results ?? [];
   const journalHighlights = journalPayload?.results ?? [];
