@@ -12,6 +12,7 @@ const navigationItems = [
   { name: "About", href: "/about", group: "main" },
   { name: "Programs", href: "/programs", group: "main" },
   { name: "Faculty & Staff", href: "/faculty", group: "main" },
+  { name: "Alumni", href: "/alumni", group: "main" },
   { name: "Projects", href: "/projects", group: "main" },
   { name: "Research", href: "/research", group: "main" },
   { name: "Journal", href: "/journal", group: "main" },

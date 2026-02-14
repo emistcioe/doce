@@ -142,6 +142,14 @@ export function Footer() {
                     Faculty & Staff
                   </Link>
                 </li>
+                <li>
+                  <Link
+                    href="/alumni"
+                    className="hover:text-secondary transition-colors"
+                  >
+                    Alumni
+                  </Link>
+                </li>
               </ul>
             </div>
 
