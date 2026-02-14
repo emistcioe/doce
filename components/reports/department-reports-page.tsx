@@ -46,6 +46,7 @@ type PaginatedResponse<T> = {
 };
 
 const PAGE_SIZE = 10;
+const REPORT_TYPE_ALL = "ALL";
 
 function getReportTypeLabel(item: ApiReportItem): string {
   return (
@@ -55,6 +56,10 @@ function getReportTypeLabel(item: ApiReportItem): string {
     item.report_type ||
     "Report"
   );
+}
+
+function normalizeReportType(value: string): string {
+  return value.trim().toUpperCase();
 }
 
 function getIssueLabel(item: ApiReportItem): string {
@@ -78,6 +83,7 @@ export function DepartmentReportsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [reportTypeFilter, setReportTypeFilter] = useState<string>(REPORT_TYPE_ALL);
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -141,24 +147,38 @@ export function DepartmentReportsPage() {
     };
   }, [slug]);
 
+  const availableReportTypes = useMemo(() => {
+    const lookup = new Map<string, string>();
+    reports.forEach((report) => {
+      const label = getReportTypeLabel(report);
+      const key = normalizeReportType(label);
+      if (!lookup.has(key)) lookup.set(key, label);
+    });
+    return Array.from(lookup.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [reports]);
+
   const filteredReports = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
-    if (!query) return reports;
-
     return reports.filter((report) => {
+      const reportType = normalizeReportType(getReportTypeLabel(report));
+      const matchesType =
+        reportTypeFilter === REPORT_TYPE_ALL || reportType === reportTypeFilter;
       const summary = report.summary || report.description || "";
-      return (
+      const matchesSearch =
+        !query ||
         report.title.toLowerCase().includes(query) ||
         summary.toLowerCase().includes(query) ||
-        getReportTypeLabel(report).toLowerCase().includes(query) ||
-        getIssueLabel(report).toLowerCase().includes(query)
-      );
+        reportType.toLowerCase().includes(query) ||
+        getIssueLabel(report).toLowerCase().includes(query);
+      return matchesType && matchesSearch;
     });
-  }, [reports, searchTerm]);
+  }, [reportTypeFilter, reports, searchTerm]);
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm]);
+  }, [reportTypeFilter, searchTerm]);
 
   const pageCount = Math.max(1, Math.ceil(filteredReports.length / PAGE_SIZE));
   const paginatedReports = filteredReports.slice(
@@ -192,7 +212,7 @@ export function DepartmentReportsPage() {
           </p>
         </div>
 
-        <div className="mb-8">
+        <div className="mb-8 space-y-4">
           <div className="relative max-w-md mx-auto">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
@@ -203,13 +223,32 @@ export function DepartmentReportsPage() {
               className="pl-10"
             />
           </div>
+          <div className="flex justify-center gap-2 flex-wrap">
+            <Button
+              variant={reportTypeFilter === REPORT_TYPE_ALL ? "default" : "outline"}
+              onClick={() => setReportTypeFilter(REPORT_TYPE_ALL)}
+            >
+              All Types
+            </Button>
+            {availableReportTypes.map((item) => (
+              <Button
+                key={item.value}
+                variant={reportTypeFilter === item.value ? "default" : "outline"}
+                onClick={() => setReportTypeFilter(item.value)}
+              >
+                {item.label}
+              </Button>
+            ))}
+          </div>
         </div>
 
         <div className="mb-10">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-semibold">All Reports</h2>
             <p className="text-sm text-muted-foreground">
-              {searchTerm ? `${filteredReports.length} results` : `${reports.length} total reports`}
+              {searchTerm || reportTypeFilter !== REPORT_TYPE_ALL
+                ? `${filteredReports.length} results`
+                : `${reports.length} total reports`}
             </p>
           </div>
 

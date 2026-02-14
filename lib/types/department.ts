@@ -32,6 +32,24 @@ export type DepartmentDownload = {
   title: string
   description: string
   file: string
+  category?: string
+  categoryDisplay?: string
+  category_display?: string
+  reportType?: string | null
+  report_type?: string | null
+  reportTypeDisplay?: string | null
+  report_type_display?: string | null
+  summary?: string | null
+  issueLabel?: string | null
+  issue_label?: string | null
+  coverImage?: string | null
+  cover_image?: string | null
+  publishedDate?: string | null
+  published_date?: string | null
+  displayOrder?: number
+  display_order?: number
+  createdAt?: string
+  created_at?: string
 }
 
 export type DepartmentPlan = {

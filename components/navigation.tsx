@@ -21,6 +21,8 @@ const mainNavigationItems = [
 ];
 
 const resourceNavigationItems = [
+  { name: "Downloads", href: "/downloads?category=DOWNLOAD" },
+  { name: "Magazines", href: "/downloads?category=MAGAZINE" },
   { name: "Gallery", href: "/gallery" },
   { name: "Journal", href: "/journal" },
   { name: "Research", href: "/research" },
