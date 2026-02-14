@@ -16,6 +16,7 @@ interface DepartmentSummary {
   name: string;
   slug: string;
   short_name?: string | null;
+  shortName?: string | null;
 }
 
 interface ProgramSummary {
@@ -23,24 +24,34 @@ interface ProgramSummary {
   name: string;
   slug: string;
   short_name?: string | null;
+  shortName?: string | null;
 }
 
 interface AlumniSubmissionItem {
   uuid: string;
-  given_name: string;
-  middle_name: string;
-  surname: string;
-  full_name: string;
-  roll_no: string;
+  given_name?: string | null;
+  givenName?: string | null;
+  middle_name?: string | null;
+  middleName?: string | null;
+  surname?: string | null;
+  full_name?: string | null;
+  fullName?: string | null;
+  roll_no?: string | null;
+  rollNo?: string | null;
   registration_number?: string;
-  passed_year: string;
+  registrationNumber?: string;
+  passed_year?: string | null;
+  passedYear?: string | null;
   email?: string;
   workplace?: string;
   department?: DepartmentSummary;
   program?: ProgramSummary | null;
   program_other_name?: string;
+  programOtherName?: string;
   program_name?: string;
-  created_at: string;
+  programName?: string;
+  created_at?: string;
+  createdAt?: string;
 }
 
 interface GroupedAlumni {
@@ -53,20 +64,38 @@ interface GroupedAlumni {
 
 const normalize = (value: string) => value.trim().toLowerCase();
 
+const firstNonEmpty = (...values: Array<string | null | undefined>) => {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return "";
+};
+
 const resolveFullName = (entry: AlumniSubmissionItem) => {
-  if (entry.full_name?.trim()) return entry.full_name.trim();
-  return [entry.given_name, entry.middle_name, entry.surname]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
+  const explicit = firstNonEmpty(entry.full_name, entry.fullName);
+  if (explicit) return explicit;
+  const givenName = firstNonEmpty(entry.given_name, entry.givenName);
+  const middleName = firstNonEmpty(entry.middle_name, entry.middleName);
+  const surname = firstNonEmpty(entry.surname);
+  return [givenName, middleName, surname].filter(Boolean).join(" ").trim();
 };
 
 const resolveProgramName = (entry: AlumniSubmissionItem) => {
-  if (entry.program_name?.trim()) return entry.program_name.trim();
+  const explicit = firstNonEmpty(entry.program_name, entry.programName);
+  if (explicit) return explicit;
   if (entry.program?.name?.trim()) return entry.program.name.trim();
-  if (entry.program_other_name?.trim()) return entry.program_other_name.trim();
+  const other = firstNonEmpty(entry.program_other_name, entry.programOtherName);
+  if (other) return other;
   return "Program not specified";
 };
+
+const resolveRollNo = (entry: AlumniSubmissionItem) =>
+  firstNonEmpty(entry.roll_no, entry.rollNo);
+
+const resolvePassedYear = (entry: AlumniSubmissionItem) =>
+  firstNonEmpty(entry.passed_year, entry.passedYear);
 
 export function AlumniDirectoryPage() {
   const { data: department } = useDepartmentContext();
@@ -144,9 +173,20 @@ export function AlumniDirectoryPage() {
 
   const years = useMemo(
     () =>
-      Array.from(new Set(entries.map((entry) => entry.passed_year))).sort(
-        (a, b) => Number(b) - Number(a)
-      ),
+      Array.from(
+        new Set(
+          entries
+            .map((entry) => resolvePassedYear(entry))
+            .filter((year) => year.length > 0)
+        )
+      ).sort((a, b) => {
+        const aNumber = Number(a);
+        const bNumber = Number(b);
+        if (!Number.isNaN(aNumber) && !Number.isNaN(bNumber)) {
+          return bNumber - aNumber;
+        }
+        return b.localeCompare(a);
+      }),
     [entries]
   );
 
@@ -157,14 +197,16 @@ export function AlumniDirectoryPage() {
       const fullName = resolveFullName(entry);
       const workplace = entry.workplace || "";
       const programName = resolveProgramName(entry);
+      const rollNo = resolveRollNo(entry);
+      const passedYear = resolvePassedYear(entry);
 
       const matchesYear =
-        selectedYear === "all" || entry.passed_year === selectedYear;
+        selectedYear === "all" || passedYear === selectedYear;
 
       const matchesSearch =
         search.length === 0 ||
         normalize(fullName).includes(search) ||
-        normalize(entry.roll_no || "").includes(search) ||
+        normalize(rollNo).includes(search) ||
         normalize(workplace).includes(search) ||
         normalize(programName).includes(search);
 
@@ -177,7 +219,7 @@ export function AlumniDirectoryPage() {
 
     filteredEntries.forEach((entry) => {
       const programName = resolveProgramName(entry);
-      const year = entry.passed_year || "Unknown";
+      const year = resolvePassedYear(entry) || "Unknown";
 
       if (!byYear.has(year)) {
         byYear.set(year, new Map());
@@ -337,7 +379,7 @@ export function AlumniDirectoryPage() {
                             <div className="min-w-0">
                               <p className="font-semibold text-foreground">{fullName}</p>
                               <p className="text-xs text-muted-foreground">
-                                Roll No: {alumni.roll_no || "Not provided"}
+                                Roll No: {resolveRollNo(alumni) || "Not provided"}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 Workplace: {alumni.workplace || "Not provided"}

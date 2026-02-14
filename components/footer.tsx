@@ -128,6 +128,14 @@ export function Footer() {
                 </li>
                 <li>
                   <Link
+                    href="/reports"
+                    className="hover:text-secondary transition-colors"
+                  >
+                    Reports
+                  </Link>
+                </li>
+                <li>
+                  <Link
                     href="/gallery"
                     className="hover:text-secondary transition-colors"
                   >
