@@ -7,35 +7,35 @@ import { useDepartmentContext } from "@/providers/department-provider";
 import { Menu, X, ChevronDown } from "lucide-react";
 import AnnouncementsTicker from "@/components/announcements-ticker";
 
-const navigationItems = [
-  { name: "Home", href: "/", group: "main" },
-  { name: "About", href: "/about", group: "main" },
-  { name: "Programs", href: "/programs", group: "main" },
-  { name: "Faculty & Staff", href: "/faculty", group: "main" },
-  { name: "Alumni", href: "/alumni", group: "main" },
-  { name: "Projects", href: "/projects", group: "main" },
-  { name: "Research", href: "/research", group: "main" },
-  { name: "Journal", href: "/journal", group: "main" },
-  { name: "Events", href: "/events", group: "main" },
-  { name: "Notices", href: "/notices", group: "main" },
-  { name: "Downloads", href: "/downloads", group: "main" },
-  { name: "Reports", href: "/reports", group: "main" },
-  { name: "Gallery", href: "/gallery", group: "more" },
-  { name: "Contact", href: "/contact", group: "more" },
+const mainNavigationItems = [
+  { name: "Home", href: "/" },
+  { name: "About", href: "/about" },
+  { name: "Programs", href: "/programs" },
+  { name: "Alumni", href: "/alumni" },
+  { name: "Projects", href: "/projects" },
+  { name: "Events", href: "/events" },
+  { name: "Notices", href: "/notices" },
+  { name: "Downloads", href: "/downloads" },
+  { name: "Reports", href: "/reports" },
+  { name: "Contact", href: "/contact" },
+];
+
+const resourceNavigationItems = [
+  { name: "Gallery", href: "/gallery" },
+  { name: "Journal", href: "/journal" },
+  { name: "Research", href: "/research" },
+  { name: "Faculty/Staff", href: "/faculty" },
 ];
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const { data: dept } = useDepartmentContext();
-  const mainItems = navigationItems.filter((item) => item.group === "main");
-  const moreItems = navigationItems.filter((item) => item.group === "more");
 
   return (
     <>
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            {/* University Logo and Title */}
             <Link href="/" className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 relative">
@@ -57,7 +57,6 @@ export function Navigation() {
               </div>
             </Link>
 
-            {/* Accreditation Badge */}
             <div className="hidden md:flex items-center space-x-3">
               <div className="w-10 h-10 relative">
                 <img
@@ -82,9 +81,8 @@ export function Navigation() {
         <nav className="bg-white border-t border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center">
-              {/* Desktop Navigation */}
               <div className="hidden lg:flex items-center space-x-6">
-                {mainItems.map((item) => (
+                {mainNavigationItems.map((item) => (
                   <Link
                     key={item.name}
                     href={item.href}
@@ -93,37 +91,26 @@ export function Navigation() {
                     {item.name}
                   </Link>
                 ))}
-                {moreItems.length > 1 && (
-                  <div className="relative group">
-                    <button className="flex items-center px-3 py-4 text-sm font-medium text-gray-700 hover:text-primary transition-colors">
-                      More
-                      <ChevronDown className="ml-1 h-4 w-4" />
-                    </button>
-                    <div className="absolute left-0 mt-0 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                      {moreItems.map((item) => (
-                        <Link
-                          key={item.name}
-                          href={item.href}
-                          className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
-                        >
-                          {item.name}
-                        </Link>
-                      ))}
-                    </div>
+
+                <div className="relative group">
+                  <button className="flex items-center px-3 py-4 text-sm font-medium text-gray-700 hover:text-primary transition-colors">
+                    Resources
+                    <ChevronDown className="ml-1 h-4 w-4" />
+                  </button>
+                  <div className="absolute left-0 mt-0 w-52 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    {resourceNavigationItems.map((item) => (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
+                      >
+                        {item.name}
+                      </Link>
+                    ))}
                   </div>
-                )}
-                {moreItems.length === 1 && (
-                  <Link
-                    key={moreItems[0].name}
-                    href={moreItems[0].href}
-                    className="px-3 py-4 text-sm font-medium text-gray-700 hover:text-primary hover:border-b-2 hover:border-primary transition-all duration-200"
-                  >
-                    {moreItems[0].name}
-                  </Link>
-                )}
+                </div>
               </div>
 
-              {/* Mobile menu button */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -138,20 +125,44 @@ export function Navigation() {
               </Button>
             </div>
 
-            {/* Mobile Navigation */}
             {isOpen && (
               <div className="lg:hidden border-t border-gray-100">
-                <div className="px-2 pt-2 pb-3 space-y-1">
-                  {navigationItems.map((item) => (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50 rounded-md transition-colors"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      {item.name}
-                    </Link>
-                  ))}
+                <div className="px-4 py-4 space-y-4">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.35em] text-gray-400">
+                      Main
+                    </p>
+                    <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
+                      {mainNavigationItems.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          className="shrink-0 rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary hover:border-primary transition-colors"
+                          onClick={() => setIsOpen(false)}
+                        >
+                          {item.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.35em] text-gray-400">
+                      Resources
+                    </p>
+                    <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
+                      {resourceNavigationItems.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          className="shrink-0 rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary hover:border-primary transition-colors"
+                          onClick={() => setIsOpen(false)}
+                        >
+                          {item.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
