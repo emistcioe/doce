@@ -11,7 +11,7 @@ const mainNavigationItems = [
   { name: "Home", href: "/" },
   { name: "About", href: "/about" },
   { name: "Programs", href: "/programs" },
-  { name: "Alumni", href: "/alumni" },
+  { name: "Faculty/Staff", href: "/faculty" },
   { name: "Projects", href: "/projects" },
   { name: "Events", href: "/events" },
   { name: "Notices", href: "/notices" },
@@ -21,12 +21,13 @@ const mainNavigationItems = [
 ];
 
 const resourceNavigationItems = [
+  { name: "Alumni", href: "/alumni" },
+  { name: "Clubs", href: "/clubs" },
   { name: "Downloads", href: "/downloads?category=DOWNLOAD" },
   { name: "Magazines", href: "/downloads?category=MAGAZINE" },
   { name: "Gallery", href: "/gallery" },
   { name: "Journal", href: "/journal" },
   { name: "Research", href: "/research" },
-  { name: "Faculty/Staff", href: "/faculty" },
 ];
 
 export function Navigation() {
