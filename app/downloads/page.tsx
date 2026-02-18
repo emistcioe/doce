@@ -16,7 +16,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import type { DepartmentDownload } from "@/lib/types/department";
@@ -65,7 +65,7 @@ function getCategoryLabel(download: DepartmentDownload): string {
   return "Download";
 }
 
-export default function DownloadsPage() {
+function DownloadsPageContent() {
   const PAGE_SIZE = 10;
   const { data: dept } = useDepartment();
   const [page, setPage] = useState(1);
@@ -324,5 +324,35 @@ export default function DownloadsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function DownloadsPageFallback() {
+  return (
+    <div className="py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-64 mx-auto" />
+          <Skeleton className="h-5 w-96 max-w-full mx-auto" />
+          <div className="space-y-3 pt-6">
+            {[...Array(4)].map((_, index) => (
+              <Card key={index}>
+                <CardContent className="p-6">
+                  <Skeleton className="h-5 w-3/4" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function DownloadsPage() {
+  return (
+    <Suspense fallback={<DownloadsPageFallback />}>
+      <DownloadsPageContent />
+    </Suspense>
   );
 }
